@@ -3,8 +3,10 @@ import test from "node:test";
 
 import {
   location,
+  hashLocation,
   nestedPropertyLocation,
   propertyLocation,
+  projectLocation,
   sameLocation,
 } from "./location.js";
 
@@ -112,4 +114,38 @@ test("nil and allocated locations retain distinct identities", () => {
   assert.equal(sameLocation(first, second), false);
   assert.equal(sameLocation(first, undefined), false);
   assert.equal(sameLocation(undefined, undefined), true);
+});
+
+test("projected locations preserve identity and bidirectional mutation", () => {
+  const source = location(12);
+  const projected = projectLocation(
+    source,
+    (value) => `value:${value}`,
+    (value) => Number(value.slice("value:".length)),
+  );
+
+  assert.ok(projected !== undefined);
+  assert.equal(projected.value, "value:12");
+  projected.value = "value:19";
+  assert.equal(source.value, 19);
+  assert.equal(sameLocation(source, projected), true);
+  assert.equal(hashLocation(source), hashLocation(projected));
+  assert.equal(projectLocation(undefined, String, Number), undefined);
+});
+
+test("location hashing follows exact equality identity", () => {
+  const object = { first: 1, second: 2 };
+  const first = propertyLocation(object, "first");
+  const same = propertyLocation(object, "first");
+  const second = propertyLocation(object, "second");
+
+  assert.equal(hashLocation(undefined), 0);
+  assert.equal(hashLocation(first), hashLocation(same));
+  assert.notEqual(hashLocation(first), hashLocation(second));
+
+  const numericRecord: Record<PropertyKey, number> = { "1": 5 };
+  const numeric = propertyLocation(numericRecord, 1);
+  const textual = propertyLocation(numericRecord, "1");
+  assert.equal(sameLocation(numeric, textual), true);
+  assert.equal(hashLocation(numeric), hashLocation(textual));
 });
