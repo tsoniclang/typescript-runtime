@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { location, propertyLocation, sameLocation } from "./location.js";
+import {
+  location,
+  nestedPropertyLocation,
+  propertyLocation,
+  sameLocation,
+} from "./location.js";
 
 test("aliases observe the same location", () => {
   const original = location(10);
@@ -64,6 +69,22 @@ test("property locations compare by exact storage identity and key", () => {
       propertyLocation(first, "other"),
     ),
     false,
+  );
+});
+
+test("nested property locations follow replacement of their parent storage", () => {
+  const original = { value: 1 };
+  const parent = location(original);
+  const nested = nestedPropertyLocation(parent, "value");
+
+  parent.value = { value: 2 };
+  nested.value = 3;
+
+  assert.equal(parent.value.value, 3);
+  assert.equal(original.value, 1);
+  assert.equal(
+    sameLocation(nested, nestedPropertyLocation(parent, "value")),
+    true,
   );
 });
 

@@ -28,6 +28,44 @@ export function propertyLocation<
   };
 }
 
+const childStorageIdentities = new WeakMap<
+  object,
+  Map<PropertyKey, object>
+>();
+
+export function nestedPropertyLocation<
+  TObject extends object,
+  TKey extends keyof TObject,
+>(parent: Location<TObject>, key: TKey): Location<TObject[TKey]> {
+  return {
+    storageIdentity: locationIdentity(parent),
+    storageKey: key,
+    get value() {
+      return parent.value[key];
+    },
+    set value(value: TObject[TKey]) {
+      parent.value[key] = value;
+    },
+  };
+}
+
+function locationIdentity(location: Location<unknown>): object {
+  if (location.storageKey === undefined) {
+    return location.storageIdentity;
+  }
+  let children = childStorageIdentities.get(location.storageIdentity);
+  if (children === undefined) {
+    children = new Map<PropertyKey, object>();
+    childStorageIdentities.set(location.storageIdentity, children);
+  }
+  let identity = children.get(location.storageKey);
+  if (identity === undefined) {
+    identity = {};
+    children.set(location.storageKey, identity);
+  }
+  return identity;
+}
+
 export function sameLocation<T>(
   left: Location<T> | undefined,
   right: Location<T> | undefined,
