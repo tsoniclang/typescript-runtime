@@ -88,6 +88,22 @@ test("nested property locations follow replacement of their parent storage", () 
   );
 });
 
+test("nested element locations follow replacement of their parent storage", () => {
+  const original = [1];
+  const parent = location(original);
+  const nested = nestedPropertyLocation(parent, 0);
+
+  parent.value = [2];
+  nested.value = 3;
+
+  assert.deepEqual(parent.value, [3]);
+  assert.deepEqual(original, [1]);
+  assert.equal(
+    sameLocation(nested, nestedPropertyLocation(parent, 0)),
+    true,
+  );
+});
+
 test("nil and allocated locations retain distinct identities", () => {
   const first = location(10);
   const second = location(10);
