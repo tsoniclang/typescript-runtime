@@ -16,4 +16,5 @@ console.log(first.value); // 11
 
 Addressed object properties and indexed elements use `propertyLocation`, which
 captures the base and key once while preserving reads and writes through the
-original storage.
+original storage. `sameLocation` compares the underlying storage identity, so
+separately created property locations for the same base and key compare equal.

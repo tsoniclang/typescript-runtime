@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { location, propertyLocation } from "./location.js";
+import { location, propertyLocation, sameLocation } from "./location.js";
 
 test("aliases observe the same location", () => {
   const original = location(10);
@@ -38,4 +38,41 @@ test("property locations evaluate their base and key once", () => {
   assert.deepEqual(values, [10, 25]);
   assert.equal(baseEvaluations, 1);
   assert.equal(keyEvaluations, 1);
+});
+
+test("property locations compare by exact storage identity and key", () => {
+  const first = { value: 10, other: 20 };
+  const second = { value: 10, other: 20 };
+
+  assert.equal(
+    sameLocation(
+      propertyLocation(first, "value"),
+      propertyLocation(first, "value"),
+    ),
+    true,
+  );
+  assert.equal(
+    sameLocation(
+      propertyLocation(first, "value"),
+      propertyLocation(second, "value"),
+    ),
+    false,
+  );
+  assert.equal(
+    sameLocation(
+      propertyLocation(first, "value"),
+      propertyLocation(first, "other"),
+    ),
+    false,
+  );
+});
+
+test("nil and allocated locations retain distinct identities", () => {
+  const first = location(10);
+  const second = location(10);
+
+  assert.equal(sameLocation(first, first), true);
+  assert.equal(sameLocation(first, second), false);
+  assert.equal(sameLocation(first, undefined), false);
+  assert.equal(sameLocation(undefined, undefined), true);
 });
