@@ -20,6 +20,10 @@
       "types": "./dist/location.d.ts",
       "default": "./dist/location.js"
     },
+    "./raw-pointer.js": {
+      "types": "./dist/raw-pointer.d.ts",
+      "default": "./dist/raw-pointer.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {

@@ -1,3 +1,5 @@
+import { hashObjectIdentity } from "./object-identity.js";
+
 export interface Location<T> {
   readonly storageIdentity: object;
   readonly storageKey: PropertyKey | undefined;
@@ -49,8 +51,6 @@ const childStorageIdentities = new WeakMap<
   object,
   Map<PropertyKey, object>
 >();
-const locationHashes = new WeakMap<object, number>();
-let nextLocationHash = 1;
 
 export function nestedPropertyLocation<
   TObject extends object,
@@ -104,16 +104,7 @@ export function hashLocation(
     return 0;
   }
   const identity = locationIdentity(pointer);
-  const existing = locationHashes.get(identity);
-  if (existing !== undefined) {
-    return existing;
-  }
-  const hash = nextLocationHash;
-  nextLocationHash = nextLocationHash === Number.MAX_SAFE_INTEGER
-    ? 1
-    : nextLocationHash + 1;
-  locationHashes.set(identity, hash);
-  return hash;
+  return hashObjectIdentity(identity);
 }
 
 export function projectLocation<TSource, TTarget>(
