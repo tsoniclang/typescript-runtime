@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  boundLocation,
   hashLocation,
   location,
   nestedPropertyLocation,
@@ -9,6 +10,41 @@ import {
   propertyLocation,
   sameLocation,
 } from "./location.js";
+
+test("bound locations preserve external storage identity and mutation", () => {
+  const firstStorage = { value: 10 };
+  const secondStorage = { value: 10 };
+  const first = boundLocation(
+    firstStorage,
+    () => firstStorage.value,
+    (value) => {
+      firstStorage.value = value;
+    },
+  );
+  const alias = boundLocation(
+    firstStorage,
+    () => firstStorage.value,
+    (value) => {
+      firstStorage.value = value;
+    },
+  );
+  const second = boundLocation(
+    secondStorage,
+    () => secondStorage.value,
+    (value) => {
+      secondStorage.value = value;
+    },
+  );
+
+  alias.value = 25;
+
+  assert.equal(first.value, 25);
+  assert.equal(firstStorage.value, 25);
+  assert.equal(sameLocation(first, alias), true);
+  assert.equal(hashLocation(first), hashLocation(alias));
+  assert.equal(sameLocation(first, second), false);
+  assert.notEqual(hashLocation(first), hashLocation(second));
+});
 
 test("aliases observe the same location", () => {
   const original = location(10);

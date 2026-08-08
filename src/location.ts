@@ -12,6 +12,23 @@ export function location<T>(initial: T): Location<T> {
   };
 }
 
+export function boundLocation<T>(
+  identity: object,
+  read: () => T,
+  write: (value: T) => void,
+): Location<T> {
+  return {
+    storageIdentity: identity,
+    storageKey: undefined,
+    get value() {
+      return read();
+    },
+    set value(value: T) {
+      write(value);
+    },
+  };
+}
+
 export function propertyLocation<
   TObject extends object,
   TKey extends keyof TObject,

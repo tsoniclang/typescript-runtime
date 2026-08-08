@@ -1,4 +1,5 @@
 export {
+  boundLocation,
   hashLocation,
   location,
   nestedPropertyLocation,
