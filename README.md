@@ -18,3 +18,6 @@ Addressed object properties and indexed elements use `propertyLocation`, which
 captures the base and key once while preserving reads and writes through the
 original storage. `sameLocation` compares the underlying storage identity, so
 separately created property locations for the same base and key compare equal.
+`hashLocation` derives a stable process-local hash from that same identity, and
+`projectLocation` preserves the identity while adapting reads and writes between
+two statically selected value representations.

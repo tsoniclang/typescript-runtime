@@ -32,6 +32,8 @@ const childStorageIdentities = new WeakMap<
   object,
   Map<PropertyKey, object>
 >();
+const locationHashes = new WeakMap<object, number>();
+let nextLocationHash = 1;
 
 export function nestedPropertyLocation<
   TObject extends object,
@@ -76,4 +78,43 @@ export function sameLocation<T>(
   return left === right ||
     left.storageIdentity === right.storageIdentity &&
     left.storageKey === right.storageKey;
+}
+
+export function hashLocation(
+  pointer: Location<unknown> | undefined,
+): number {
+  if (pointer === undefined) {
+    return 0;
+  }
+  const identity = locationIdentity(pointer);
+  const existing = locationHashes.get(identity);
+  if (existing !== undefined) {
+    return existing;
+  }
+  const hash = nextLocationHash;
+  nextLocationHash = nextLocationHash === Number.MAX_SAFE_INTEGER
+    ? 1
+    : nextLocationHash + 1;
+  locationHashes.set(identity, hash);
+  return hash;
+}
+
+export function projectLocation<TSource, TTarget>(
+  pointer: Location<TSource> | undefined,
+  fromSource: (value: TSource) => TTarget,
+  toSource: (value: TTarget) => TSource,
+): Location<TTarget> | undefined {
+  if (pointer === undefined) {
+    return undefined;
+  }
+  return {
+    storageIdentity: pointer.storageIdentity,
+    storageKey: pointer.storageKey,
+    get value() {
+      return fromSource(pointer.value);
+    },
+    set value(value: TTarget) {
+      pointer.value = toSource(value);
+    },
+  };
 }

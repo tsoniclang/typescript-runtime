@@ -1,6 +1,8 @@
 export {
+  hashLocation,
   location,
   nestedPropertyLocation,
+  projectLocation,
   propertyLocation,
   sameLocation,
 } from "./location.js";

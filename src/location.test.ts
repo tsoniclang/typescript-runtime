@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  hashLocation,
   location,
   nestedPropertyLocation,
+  projectLocation,
   propertyLocation,
   sameLocation,
 } from "./location.js";
@@ -112,4 +114,35 @@ test("nil and allocated locations retain distinct identities", () => {
   assert.equal(sameLocation(first, second), false);
   assert.equal(sameLocation(first, undefined), false);
   assert.equal(sameLocation(undefined, undefined), true);
+});
+
+test("location hashes preserve nil, alias, and property identity", () => {
+  const record = { value: 10, other: 20 };
+  const first = propertyLocation(record, "value");
+  const alias = propertyLocation(record, "value");
+  const other = propertyLocation(record, "other");
+
+  assert.equal(hashLocation(undefined), 0);
+  assert.equal(hashLocation(first), hashLocation(alias));
+  assert.notEqual(hashLocation(first), hashLocation(other));
+  assert.equal(hashLocation(first), hashLocation(first));
+});
+
+test("projected locations preserve storage identity and bidirectional mutation", () => {
+  const source = location(10);
+  const projected = projectLocation(
+    source,
+    (value) => String(value),
+    (value) => Number(value),
+  );
+
+  assert.ok(projected !== undefined);
+  assert.equal(projected.value, "10");
+  assert.equal(hashLocation(projected), hashLocation(source));
+
+  projected.value = "25";
+  assert.equal(source.value, 25);
+  source.value = 30;
+  assert.equal(projected.value, "30");
+  assert.equal(projectLocation(undefined, String, Number), undefined);
 });
