@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   boundLocation,
   hashLocation,
+  type Location,
   location,
   nestedPropertyLocation,
   projectLocation,
@@ -142,6 +143,24 @@ test("nested element locations follow replacement of their parent storage", () =
   );
 });
 
+test("nested locations fail deterministically when live parent storage becomes nullish", () => {
+  const parent = location<number[] | null>([1]);
+  const nested = nestedPropertyLocation(parent, 0);
+
+  parent.value = null;
+
+  assert.throws(
+    () => nested.value,
+    /cannot access a property through a nullish location/u,
+  );
+  assert.throws(
+    () => {
+      nested.value = 2;
+    },
+    /cannot access a property through a nullish location/u,
+  );
+});
+
 test("nil and allocated locations retain distinct identities", () => {
   const first = location(10);
   const second = location(10);
@@ -171,9 +190,9 @@ test("projected locations preserve storage identity and bidirectional mutation",
     (value) => String(value),
     (value) => Number(value),
   );
+  const exactProjected: Location<string> = projected;
 
-  assert.ok(projected !== undefined);
-  assert.equal(projected.value, "10");
+  assert.equal(exactProjected.value, "10");
   assert.equal(hashLocation(projected), hashLocation(source));
 
   projected.value = "25";

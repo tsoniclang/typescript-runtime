@@ -55,15 +55,26 @@ const childStorageIdentities = new WeakMap<
 export function nestedPropertyLocation<
   TObject extends object,
   TKey extends keyof TObject,
->(parent: Location<TObject>, key: TKey): Location<TObject[TKey]> {
+>(
+  parent: Location<TObject | null | undefined>,
+  key: TKey,
+): Location<TObject[TKey]> {
   return {
     storageIdentity: locationIdentity(parent),
     storageKey: key,
     get value() {
-      return parent.value[key];
+      const object = parent.value;
+      if (object === null || object === undefined) {
+        throw new TypeError("cannot access a property through a nullish location");
+      }
+      return object[key];
     },
     set value(value: TObject[TKey]) {
-      parent.value[key] = value;
+      const object = parent.value;
+      if (object === null || object === undefined) {
+        throw new TypeError("cannot access a property through a nullish location");
+      }
+      object[key] = value;
     },
   };
 }
@@ -107,6 +118,16 @@ export function hashLocation(
   return hashObjectIdentity(identity);
 }
 
+export function projectLocation<TSource, TTarget>(
+  pointer: Location<TSource>,
+  fromSource: (value: TSource) => TTarget,
+  toSource: (value: TTarget) => TSource,
+): Location<TTarget>;
+export function projectLocation<TSource, TTarget>(
+  pointer: Location<TSource> | undefined,
+  fromSource: (value: TSource) => TTarget,
+  toSource: (value: TTarget) => TSource,
+): Location<TTarget> | undefined;
 export function projectLocation<TSource, TTarget>(
   pointer: Location<TSource> | undefined,
   fromSource: (value: TSource) => TTarget,
