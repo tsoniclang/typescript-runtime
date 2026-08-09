@@ -147,8 +147,8 @@ export function sameLocation<T>(
     left.storageKey === right.storageKey;
 }
 
-export function hashLocation(
-  pointer: Location<unknown> | undefined,
+export function hashLocation<T>(
+  pointer: Location<T> | undefined,
 ): number {
   if (pointer === undefined) {
     return 0;
