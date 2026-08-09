@@ -118,7 +118,7 @@ class NestedPropertyLocation<
   }
 }
 
-function locationIdentity(location: Location<unknown>): object {
+function locationIdentity<T>(location: Location<T>): object {
   if (location.storageKey === undefined) {
     return location.storageIdentity;
   }
