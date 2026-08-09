@@ -19,32 +19,56 @@ export function boundLocation<T>(
   read: () => T,
   write: (value: T) => void,
 ): Location<T> {
-  return {
-    storageIdentity: identity,
-    storageKey: undefined,
-    get value() {
-      return read();
-    },
-    set value(value: T) {
-      write(value);
-    },
-  };
+  return new BoundLocation(identity, read, write);
+}
+
+class BoundLocation<T> implements Location<T> {
+  readonly storageKey = undefined;
+
+  constructor(
+    readonly storageIdentity: object,
+    private readonly read: () => T,
+    private readonly write: (value: T) => void,
+  ) {}
+
+  get value(): T {
+    return this.read();
+  }
+
+  set value(value: T) {
+    this.write(value);
+  }
 }
 
 export function propertyLocation<
   TObject extends object,
   TKey extends keyof TObject,
 >(object: TObject, key: TKey): Location<TObject[TKey]> {
-  return {
-    storageIdentity: object,
-    storageKey: key,
-    get value() {
-      return object[key];
-    },
-    set value(value: TObject[TKey]) {
-      object[key] = value;
-    },
-  };
+  return new PropertyLocation(object, key);
+}
+
+class PropertyLocation<
+  TObject extends object,
+  TKey extends keyof TObject,
+> implements Location<TObject[TKey]> {
+  readonly storageIdentity: object;
+  readonly storageKey: PropertyKey;
+
+  constructor(
+    private readonly object: TObject,
+    private readonly key: TKey,
+  ) {
+    this.storageIdentity = object;
+    this.storageKey = key;
+  }
+
+  get value(): TObject[TKey] {
+    return this.object[this.key];
+  }
+
+  set value(value: TObject[TKey]) {
+    this.object[this.key] = value;
+  }
 }
 
 const childStorageIdentities = new WeakMap<
@@ -59,24 +83,39 @@ export function nestedPropertyLocation<
   parent: Location<TObject | null | undefined>,
   key: TKey,
 ): Location<TObject[TKey]> {
-  return {
-    storageIdentity: locationIdentity(parent),
-    storageKey: key,
-    get value() {
-      const object = parent.value;
-      if (object === null || object === undefined) {
-        throw new TypeError("cannot access a property through a nullish location");
-      }
-      return object[key];
-    },
-    set value(value: TObject[TKey]) {
-      const object = parent.value;
-      if (object === null || object === undefined) {
-        throw new TypeError("cannot access a property through a nullish location");
-      }
-      object[key] = value;
-    },
-  };
+  return new NestedPropertyLocation(parent, key);
+}
+
+class NestedPropertyLocation<
+  TObject extends object,
+  TKey extends keyof TObject,
+> implements Location<TObject[TKey]> {
+  readonly storageIdentity: object;
+  readonly storageKey: PropertyKey;
+
+  constructor(
+    private readonly parent: Location<TObject | null | undefined>,
+    private readonly key: TKey,
+  ) {
+    this.storageIdentity = locationIdentity(parent);
+    this.storageKey = key;
+  }
+
+  get value(): TObject[TKey] {
+    return this.object()[this.key];
+  }
+
+  set value(value: TObject[TKey]) {
+    this.object()[this.key] = value;
+  }
+
+  private object(): TObject {
+    const object = this.parent.value;
+    if (object === null || object === undefined) {
+      throw new TypeError("cannot access a property through a nullish location");
+    }
+    return object;
+  }
 }
 
 function locationIdentity(location: Location<unknown>): object {
@@ -136,14 +175,27 @@ export function projectLocation<TSource, TTarget>(
   if (pointer === undefined) {
     return undefined;
   }
-  return {
-    storageIdentity: pointer.storageIdentity,
-    storageKey: pointer.storageKey,
-    get value() {
-      return fromSource(pointer.value);
-    },
-    set value(value: TTarget) {
-      pointer.value = toSource(value);
-    },
-  };
+  return new ProjectedLocation(pointer, fromSource, toSource);
+}
+
+class ProjectedLocation<TSource, TTarget> implements Location<TTarget> {
+  readonly storageIdentity: object;
+  readonly storageKey: PropertyKey | undefined;
+
+  constructor(
+    private readonly pointer: Location<TSource>,
+    private readonly fromSource: (value: TSource) => TTarget,
+    private readonly toSource: (value: TTarget) => TSource,
+  ) {
+    this.storageIdentity = pointer.storageIdentity;
+    this.storageKey = pointer.storageKey;
+  }
+
+  get value(): TTarget {
+    return this.fromSource(this.pointer.value);
+  }
+
+  set value(value: TTarget) {
+    this.pointer.value = this.toSource(value);
+  }
 }
