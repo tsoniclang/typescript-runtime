@@ -118,7 +118,7 @@ class NestedPropertyLocation<
   }
 }
 
-function locationIdentity(location: Location<unknown>): object {
+function locationIdentity<T>(location: Location<T>): object {
   if (location.storageKey === undefined) {
     return location.storageIdentity;
   }
@@ -147,8 +147,8 @@ export function sameLocation<T>(
     left.storageKey === right.storageKey;
 }
 
-export function hashLocation(
-  pointer: Location<unknown> | undefined,
+export function hashLocation<T>(
+  pointer: Location<T> | undefined,
 ): number {
   if (pointer === undefined) {
     return 0;
