@@ -33,8 +33,8 @@ if (alias !== undefined) alias.value = 7;
 console.log(count.value);
 ```
 
-The example prints `7`. `offsetRawPointer` selects a byte position within that
-retained allocation; a narrower typed view can read or write those bytes using
+The example prints `7`. `offsetRawPointer` selects a byte position within the
+retained pointee view; a narrower typed view can read or write those bytes using
 the explicitly selected byte order. Nil, invalid integer offsets, misalignment
 and out-of-bounds views fail deterministically. Equality and hashing use the
 same location identity as typed pointers, including independent property
@@ -45,3 +45,9 @@ arbitrary-object raw constructor, integer/address registry, native pinning, or
 implicit source-language layout inference. The target must select and prove
 its exact codecs; generic aggregates and physical-address observations are not
 certified merely because a `MemoryLayout<T>` can be declared.
+
+The supplied codec determines this view's byte extent. A property location does
+not establish the layout or extent of its containing object or array. Arithmetic
+between distinct fields or elements, aggregate padding, and whole-allocation
+address identity require a complete aggregate-storage representation; the
+scalar-view tests do not certify those capabilities.
