@@ -26,14 +26,17 @@ Layout-backed raw pointers retain live storage rather than a copied value:
 
 ```ts
 const count = location(1);
-const layout = int32Layout("little");
+const layout = int32Layout("little", 4, 4);
 const raw = toRawPointer(count, layout);
 const alias = reinterpretRawPointer(raw, layout);
 if (alias !== undefined) alias.value = 7;
 console.log(count.value);
 ```
 
-The example prints `7`. `offsetRawPointer` selects a byte position within the
+The example prints `7`. Scalar codecs take explicit byte order, alignment, and
+stride; width does not imply source alignment (`uint64Layout("little", 4, 8)`
+represents an eight-byte value with four-byte alignment). Layout construction
+rejects invalid dimensions. `offsetRawPointer` selects a byte position within the
 retained pointee view; a narrower typed view can read or write those bytes using
 the explicitly selected byte order. Nil, invalid integer offsets, misalignment
 and out-of-bounds views fail deterministically. Equality and hashing use the

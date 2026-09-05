@@ -10,12 +10,12 @@ import {
 for (const order of ["little", "big"] as const) {
   test(`all integer codecs preserve their full ${order}-endian domain`, () => {
     const numbers = [
-      { layout: int8Layout(order), low: -128, high: 127 },
-      { layout: uint8Layout(order), low: 0, high: 255 },
-      { layout: int16Layout(order), low: -32768, high: 32767 },
-      { layout: uint16Layout(order), low: 0, high: 65535 },
-      { layout: int32Layout(order), low: -2147483648, high: 2147483647 },
-      { layout: uint32Layout(order), low: 0, high: 4294967295 },
+      { layout: int8Layout(order, 1, 1), low: -128, high: 127 },
+      { layout: uint8Layout(order, 1, 1), low: 0, high: 255 },
+      { layout: int16Layout(order, 2, 2), low: -32768, high: 32767 },
+      { layout: uint16Layout(order, 2, 2), low: 0, high: 65535 },
+      { layout: int32Layout(order, 4, 4), low: -2147483648, high: 2147483647 },
+      { layout: uint32Layout(order, 4, 4), low: 0, high: 4294967295 },
     ];
     for (const { layout, low, high } of numbers) {
       const original = location(low);
@@ -28,8 +28,8 @@ for (const order of ["little", "big"] as const) {
       assert.equal(alias.value, low);
     }
     const wide = [
-      { layout: int64Layout(order), low: -(1n << 63n), high: (1n << 63n) - 1n },
-      { layout: uint64Layout(order), low: 0n, high: (1n << 64n) - 1n },
+      { layout: int64Layout(order, 8, 8), low: -(1n << 63n), high: (1n << 63n) - 1n },
+      { layout: uint64Layout(order, 8, 8), low: 0n, high: (1n << 64n) - 1n },
     ];
     for (const { layout, low, high } of wide) {
       const original = location(low);
@@ -38,7 +38,7 @@ for (const order of ["little", "big"] as const) {
       assert.ok(alias);
       alias.value = high;
       assert.equal(original.value, high);
-      const lowByte = reinterpretRawPointer(offsetRawPointer(raw, order === "little" ? 0 : 7), uint8Layout(order));
+      const lowByte = reinterpretRawPointer(offsetRawPointer(raw, order === "little" ? 0 : 7), uint8Layout(order, 1, 1));
       assert.ok(lowByte);
       lowByte.value = 0;
       assert.equal(original.value, high & ~255n);
