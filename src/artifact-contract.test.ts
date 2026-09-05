@@ -36,6 +36,10 @@ test("published declarations expose one closed location and raw-pointer contract
     rawDeclarations,
     /readonly identity: object/u,
   );
+  assert.doesNotMatch(rawDeclarations, /function rawPointer\(/u);
+  assert.match(rawDeclarations, /function toRawPointer<T>/u);
+  assert.match(rawDeclarations, /function reinterpretRawPointer<T>/u);
+  assert.match(rawDeclarations, /function offsetRawPointer\(/u);
   assert.doesNotMatch(
     `${declarations}\n${rawDeclarations}`,
     /\b(?:any|unknown)\b/u,

@@ -21,3 +21,27 @@ separately created property locations for the same base and key compare equal.
 `hashLocation` derives a stable process-local hash from that same identity, and
 `projectLocation` preserves the identity while adapting reads and writes between
 two statically selected value representations.
+
+Layout-backed raw pointers retain live storage rather than a copied value:
+
+```ts
+const count = location(1);
+const layout = int32Layout("little");
+const raw = toRawPointer(count, layout);
+const alias = reinterpretRawPointer(raw, layout);
+if (alias !== undefined) alias.value = 7;
+console.log(count.value);
+```
+
+The example prints `7`. `offsetRawPointer` selects a byte position within that
+retained allocation; a narrower typed view can read or write those bytes using
+the explicitly selected byte order. Nil, invalid integer offsets, misalignment
+and out-of-bounds views fail deterministically. Equality and hashing use the
+same location identity as typed pointers, including independent property
+addresses and projected locations.
+
+This is retained managed storage, not a native-address emulator. There is no
+arbitrary-object raw constructor, integer/address registry, native pinning, or
+implicit source-language layout inference. The target must select and prove
+its exact codecs; generic aggregates and physical-address observations are not
+certified merely because a `MemoryLayout<T>` can be declared.

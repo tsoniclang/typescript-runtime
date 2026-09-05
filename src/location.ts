@@ -1,4 +1,5 @@
 import { hashObjectIdentity } from "./object-identity.js";
+import { inheritMemoryAddress } from "./memory/address.js";
 
 export interface Location<T> {
   readonly storageIdentity: object;
@@ -175,7 +176,9 @@ export function projectLocation<TSource, TTarget>(
   if (pointer === undefined) {
     return undefined;
   }
-  return new ProjectedLocation(pointer, fromSource, toSource);
+  const projected = new ProjectedLocation(pointer, fromSource, toSource);
+  inheritMemoryAddress(pointer, projected);
+  return projected;
 }
 
 class ProjectedLocation<TSource, TTarget> implements Location<TTarget> {

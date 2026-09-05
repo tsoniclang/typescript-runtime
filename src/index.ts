@@ -10,7 +10,14 @@ export {
 export type { Location } from "./location.js";
 export {
   hashRawPointer,
-  rawPointer,
+  toRawPointer,
+  reinterpretRawPointer,
+  offsetRawPointer,
   sameRawPointer,
 } from "./raw-pointer.js";
 export type { RawPointer } from "./raw-pointer.js";
+export type { ByteOrder, MemoryLayout } from "./memory/layout.js";
+export {
+  int8Layout, uint8Layout, int16Layout, uint16Layout, int32Layout, uint32Layout,
+  int64Layout, uint64Layout, float32Layout, float64Layout,
+} from "./memory/scalars.js";
