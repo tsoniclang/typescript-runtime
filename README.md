@@ -22,6 +22,17 @@ separately created property locations for the same base and key compare equal.
 `projectLocation` preserves the identity while adapting reads and writes between
 two statically selected value representations.
 
+`keepAlive(value)` is a lexical managed-reachability barrier. It retains one
+closed carrier for the current ECMAScript job using the standard WeakRef
+constructor's kept-object rule, then releases that retention automatically.
+It neither inspects the value nor pins a native address. It is not a global
+root registry and does not authorize asynchronous foreign use after the job.
+The guarded GC proof includes an omitted-barrier control and verifies both
+transitive survival during the job and collection after it.
+
+The [ECMAScript WeakRef constructor](https://tc39.es/ecma262/multipage/managing-memory.html#sec-weak-ref-constructor)
+owns that job-local retention guarantee.
+
 Layout-backed raw pointers retain live storage rather than a copied value:
 
 ```ts
