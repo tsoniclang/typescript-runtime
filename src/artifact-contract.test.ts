@@ -40,6 +40,8 @@ test("published declarations expose one closed location and raw-pointer contract
   assert.match(rawDeclarations, /function toRawPointer<T>/u);
   assert.match(rawDeclarations, /function reinterpretRawPointer<T>/u);
   assert.match(rawDeclarations, /function offsetRawPointer\(/u);
+  const scalarDeclarations = await readFile(join(outputDirectory, "memory/scalars.d.ts"), "utf8");
+  assert.doesNotMatch(scalarDeclarations, /float(?:32|64)Layout/u);
   assert.doesNotMatch(
     `${declarations}\n${rawDeclarations}`,
     /\b(?:any|unknown)\b/u,

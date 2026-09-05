@@ -44,13 +44,3 @@ export function uint64Layout(order: ByteOrder): MemoryLayout<bigint> {
   const little = littleEndian(order);
   return scalar(8, bytes => bytes.getBigUint64(0, little), (bytes, value) => bytes.setBigUint64(0, value, little));
 }
-
-export function float32Layout(order: ByteOrder): MemoryLayout<number> {
-  const little = littleEndian(order);
-  return scalar(4, bytes => bytes.getFloat32(0, little), (bytes, value) => bytes.setFloat32(0, value, little));
-}
-
-export function float64Layout(order: ByteOrder): MemoryLayout<number> {
-  const little = littleEndian(order);
-  return scalar(8, bytes => bytes.getFloat64(0, little), (bytes, value) => bytes.setFloat64(0, value, little));
-}
