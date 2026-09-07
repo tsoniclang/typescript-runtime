@@ -21,3 +21,51 @@ separately created property locations for the same base and key compare equal.
 `hashLocation` derives a stable process-local hash from that same identity, and
 `projectLocation` preserves the identity while adapting reads and writes between
 two statically selected value representations.
+
+`keepAlive(value)` is a lexical managed-reachability barrier. It retains one
+closed carrier for the current ECMAScript job using the standard WeakRef
+constructor's kept-object rule, then releases that retention automatically.
+It neither inspects the value nor pins a native address. It is not a global
+root registry and does not authorize asynchronous foreign use after the job.
+The guarded GC proof includes an omitted-barrier control and verifies both
+transitive survival during the job and collection after it.
+
+The [ECMAScript WeakRef constructor](https://tc39.es/ecma262/multipage/managing-memory.html#sec-weak-ref-constructor)
+owns that job-local retention guarantee.
+
+Layout-backed raw pointers retain live storage rather than a copied value:
+
+```ts
+const count = location(1);
+const layout = int32Layout("little", 4, 4);
+const raw = toRawPointer(count, layout);
+const alias = reinterpretRawPointer(raw, layout);
+if (alias !== undefined) alias.value = 7;
+console.log(count.value);
+```
+
+The example prints `7`. Scalar codecs take explicit byte order, alignment, and
+stride; width does not imply source alignment (`uint64Layout("little", 4, 8)`
+represents an eight-byte value with four-byte alignment). Layout construction
+rejects invalid dimensions. `offsetRawPointer` selects a byte position within the
+retained pointee view; a narrower typed view can read or write those bytes using
+the explicitly selected byte order. Nil, invalid integer offsets, misalignment
+and out-of-bounds views fail deterministically. Equality and hashing use the
+same location identity as typed pointers, including independent property
+addresses and projected locations.
+
+This is retained managed storage, not a native-address emulator. There is no
+arbitrary-object raw constructor, integer/address registry, native pinning, or
+implicit source-language layout inference. The target must select and prove
+its exact codecs; generic aggregates and physical-address observations are not
+certified merely because a `MemoryLayout<T>` can be declared.
+
+The supplied codec determines a scalar view's byte extent. A property location
+alone does not establish its containing allocation. For a target-proved fixed
+array, `arrayElementLocation(values, index, layout)` instead retains the complete
+array: advancing the first element address by one stride reaches the second,
+including addresses obtained independently before raw conversion. The allocation
+preserves padding and reads/writes only the touched element window. Resizing or
+changing its selected element layout rejects. The target must prove closure and
+non-reassignment before selecting this representation. Aggregate object storage,
+descriptor transport and native-address observations remain separate contracts.

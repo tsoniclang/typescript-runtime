@@ -8,6 +8,7 @@
   "files": [
     "dist",
     "!dist/**/*.test.*",
+    "!dist/**/testing/**",
     "README.md",
     "LICENSE"
   ],
