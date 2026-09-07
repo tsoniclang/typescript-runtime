@@ -4,10 +4,22 @@ import type { MemoryLayout } from "./layout.js";
 export interface MemoryStorage {
   readonly byteLength: number;
   readonly byteAlignment: number;
-  readonly storageIdentity: object;
-  readonly storageKey: PropertyKey | undefined;
-  read(): Uint8Array;
-  write(bytes: Uint8Array): void;
+  position(byteOffset: number): MemoryPosition;
+  read(byteOffset: number, byteLength: number): Uint8Array;
+  write(byteOffset: number, bytes: Uint8Array): void;
+}
+
+export interface MemoryPosition {
+  readonly identity: object;
+  readonly key: PropertyKey | undefined;
+  readonly displacement: number;
+}
+
+export function validateMemoryRange(storage: MemoryStorage, byteOffset: number, byteLength: number): void {
+  if (!Number.isSafeInteger(byteOffset) || !Number.isSafeInteger(byteLength) ||
+      byteOffset < 0 || byteLength < 0 || byteOffset > storage.byteLength - byteLength) {
+    throw new RangeError("Memory access exceeds the retained allocation.");
+  }
 }
 
 export class LocationMemory<T> implements MemoryStorage {
@@ -28,16 +40,22 @@ export class LocationMemory<T> implements MemoryStorage {
     this.storageKey = pointer.storageKey;
   }
 
-  read(): Uint8Array {
-    const bytes = new Uint8Array(this.byteLength);
-    this.layout.write(new DataView(bytes.buffer), this.pointer.value);
-    return bytes;
+  position(byteOffset: number): MemoryPosition {
+    validateMemoryRange(this, byteOffset, 0);
+    return { identity: this.storageIdentity, key: this.storageKey, displacement: byteOffset };
   }
 
-  write(bytes: Uint8Array): void {
-    if (bytes.byteLength !== this.byteLength) {
-      throw new RangeError("Memory write must preserve the original storage extent.");
-    }
-    this.pointer.value = this.layout.read(new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+  read(byteOffset: number, byteLength: number): Uint8Array {
+    validateMemoryRange(this, byteOffset, byteLength);
+    const bytes = new Uint8Array(this.byteLength);
+    this.layout.write(new DataView(bytes.buffer), this.pointer.value);
+    return bytes.slice(byteOffset, byteOffset + byteLength);
+  }
+
+  write(byteOffset: number, bytes: Uint8Array): void {
+    validateMemoryRange(this, byteOffset, bytes.byteLength);
+    const current = this.read(0, this.byteLength);
+    current.set(bytes, byteOffset);
+    this.pointer.value = this.layout.read(new DataView(current.buffer));
   }
 }

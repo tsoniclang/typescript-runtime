@@ -15,23 +15,24 @@ export function memoryAddress(storage: MemoryStorage, byteOffset: number): Memor
   if (!Number.isSafeInteger(byteOffset) || byteOffset < 0 || byteOffset > storage.byteLength) {
     throw new RangeError("Raw pointer offset is outside its retained storage.");
   }
-  if (byteOffset === 0) {
-    return { storage, byteOffset, storageIdentity: storage.storageIdentity, storageKey: storage.storageKey };
+  const position = storage.position(byteOffset);
+  if (position.displacement === 0) {
+    return { storage, byteOffset, storageIdentity: position.identity, storageKey: position.key };
   }
-  let fields = offsets.get(storage.storageIdentity);
+  let fields = offsets.get(position.identity);
   if (fields === undefined) {
     fields = new Map();
-    offsets.set(storage.storageIdentity, fields);
+    offsets.set(position.identity, fields);
   }
-  let positions = fields.get(storage.storageKey);
+  let positions = fields.get(position.key);
   if (positions === undefined) {
     positions = new Map();
-    fields.set(storage.storageKey, positions);
+    fields.set(position.key, positions);
   }
-  let identity = positions.get(byteOffset);
+  let identity = positions.get(position.displacement);
   if (identity === undefined) {
     identity = {};
-    positions.set(byteOffset, identity);
+    positions.set(position.displacement, identity);
   }
   return { storage, byteOffset, storageIdentity: identity, storageKey: undefined };
 }

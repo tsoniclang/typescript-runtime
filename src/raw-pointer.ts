@@ -5,6 +5,7 @@ import type { MemoryAddress } from "./memory/address.js";
 import { validateMemoryLayout } from "./memory/layout.js";
 import type { MemoryLayout } from "./memory/layout.js";
 import { LocationMemory } from "./memory/storage.js";
+import { arrayMemory } from "./memory/array.js";
 
 export interface RawPointer {
   readonly [rawPointerBrand]: true;
@@ -23,6 +24,16 @@ function addressOf(pointer: RawPointer): MemoryAddress {
   const address = addresses.get(pointer);
   if (address === undefined) throw new TypeError("Raw pointer has no retained memory provenance.");
   return address;
+}
+
+export function arrayElementLocation<T>(values: T[], index: number, layout: MemoryLayout<T>): Location<T> {
+  if (!Number.isSafeInteger(index) || index < 0 || index >= values.length) {
+    throw new RangeError("Array element address is outside its retained allocation.");
+  }
+  const pointer = pointerAt(memoryAddress(arrayMemory(values, layout), index * layout.stride));
+  const result = new MemoryLocation(addressOf(pointer), layout);
+  retainMemoryAddress(result, pointer);
+  return result;
 }
 
 export function toRawPointer<T>(pointer: Location<T> | undefined, layout: MemoryLayout<T>): RawPointer | undefined {
@@ -103,13 +114,13 @@ class MemoryLocation<T> implements Location<T> {
   }
 
   get value(): T {
-    const bytes = this.address.storage.read();
-    return this.layout.read(new DataView(bytes.buffer, bytes.byteOffset + this.address.byteOffset, this.layout.byteSize));
+    const bytes = this.address.storage.read(this.address.byteOffset, this.layout.byteSize);
+    return this.layout.read(new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength));
   }
 
   set value(value: T) {
-    const bytes = this.address.storage.read();
-    this.layout.write(new DataView(bytes.buffer, bytes.byteOffset + this.address.byteOffset, this.layout.byteSize), value);
-    this.address.storage.write(bytes);
+    const bytes = new Uint8Array(this.layout.byteSize);
+    this.layout.write(new DataView(bytes.buffer), value);
+    this.address.storage.write(this.address.byteOffset, bytes);
   }
 }

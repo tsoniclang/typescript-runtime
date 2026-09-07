@@ -9,6 +9,7 @@ export {
 } from "./location.js";
 export type { Location } from "./location.js";
 export {
+  arrayElementLocation,
   hashRawPointer,
   toRawPointer,
   reinterpretRawPointer,

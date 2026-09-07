@@ -60,8 +60,12 @@ implicit source-language layout inference. The target must select and prove
 its exact codecs; generic aggregates and physical-address observations are not
 certified merely because a `MemoryLayout<T>` can be declared.
 
-The supplied codec determines this view's byte extent. A property location does
-not establish the layout or extent of its containing object or array. Arithmetic
-between distinct fields or elements, aggregate padding, and whole-allocation
-address identity require a complete aggregate-storage representation; the
-scalar-view tests do not certify those capabilities.
+The supplied codec determines a scalar view's byte extent. A property location
+alone does not establish its containing allocation. For a target-proved fixed
+array, `arrayElementLocation(values, index, layout)` instead retains the complete
+array: advancing the first element address by one stride reaches the second,
+including addresses obtained independently before raw conversion. The allocation
+preserves padding and reads/writes only the touched element window. Resizing or
+changing its selected element layout rejects. The target must prove closure and
+non-reassignment before selecting this representation. Aggregate object storage,
+descriptor transport and native-address observations remain separate contracts.
