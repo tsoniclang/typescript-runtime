@@ -69,3 +69,16 @@ preserves padding and reads/writes only the touched element window. Resizing or
 changing its selected element layout rejects. The target must prove closure and
 non-reassignment before selecting this representation. Aggregate object storage,
 descriptor transport and native-address observations remain separate contracts.
+
+For target-proven value records, `recordField` captures a typed field codec and
+`recordLayout` combines those fields with a generated accessor-view constructor.
+Whole-record writes update the original fields rather than replacing the
+object; nested writes preserve existing nested-field aliases. Views address the
+same storage, including stable equality and hashes for independently obtained
+field locations. Field addresses obtained through such views retain the
+containing allocation. Padding survives between accesses to the same
+allocation. Narrow byte windows select intersecting fields with an ordered
+index; they do not serialize every field of a wide record.
+No reflection, erased typed payload registry, or numeric address emulation is
+involved. Pointer leaves and source-language descriptors require their own
+admitted transport; integer-record codecs do not certify them.

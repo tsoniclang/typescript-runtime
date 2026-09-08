@@ -1,5 +1,5 @@
-import { sameMemoryLayout, validateMemoryLayout } from "./layout.js";
-import type { MemoryLayout } from "./layout.js";
+import { assignMemoryValue, refreshMemoryValue, sameMemoryLayout, validateMemoryLayout } from "./layout.js";
+import type { MemoryLayout, MemoryShape } from "./layout.js";
 import { validateMemoryRange } from "./storage.js";
 import type { MemoryPosition, MemoryStorage } from "./storage.js";
 
@@ -50,7 +50,22 @@ class ArrayMemory<T> implements MemoryStorage {
   position(byteOffset: number): MemoryPosition {
     this.validate(byteOffset, 0);
     const index = Math.floor(byteOffset / this.layout.stride);
-    return { identity: this.values, key: index, displacement: byteOffset % this.layout.stride };
+    const value = this.values[index];
+    const displacement = byteOffset % this.layout.stride;
+    return value === undefined ? { identity: this.values, key: index, displacement } :
+      this.layout.record?.position(value, displacement) ?? { identity: this.values, key: index, displacement };
+  }
+
+  typedPosition(byteOffset: number, layout: MemoryShape): MemoryPosition {
+    this.validate(byteOffset, layout.byteSize);
+    const index = Math.floor(byteOffset / this.layout.stride);
+    const displacement = byteOffset % this.layout.stride;
+    if (displacement === 0 && sameMemoryLayout(this.layout, layout)) {
+      return { identity: this.values, key: index, displacement };
+    }
+    const value = this.values[index];
+    return value === undefined ? this.position(byteOffset) :
+      this.layout.record?.position(value, displacement, layout) ?? this.position(byteOffset);
   }
 
   read(byteOffset: number, byteLength: number): Uint8Array {
@@ -63,26 +78,31 @@ class ArrayMemory<T> implements MemoryStorage {
     this.validate(byteOffset, bytes.byteLength);
     this.synchronize(byteOffset, bytes.byteLength);
     this.bytes.set(bytes, byteOffset);
-    this.eachValue(byteOffset, bytes.byteLength, (index, view) => {
-      this.values[index] = this.layout.read(view);
+    this.eachValue(byteOffset, bytes.byteLength, (index, view, offset, length) => {
+      const previous = this.values[index];
+      if (previous === undefined) throw new TypeError("Array memory requires an initialized element.");
+      const next = assignMemoryValue(this.layout, view, previous, offset, length);
+      if (this.layout.record === undefined) this.values[index] = next;
     });
   }
 
   private synchronize(byteOffset: number, byteLength: number): void {
-    this.eachValue(byteOffset, byteLength, (index, view) => {
+    this.eachValue(byteOffset, byteLength, (index, view, offset, length) => {
       const value = this.values[index];
       if (value === undefined) throw new TypeError("Array memory requires an initialized element.");
-      this.layout.write(view, value);
+      refreshMemoryValue(this.layout, view, value, offset, length);
     });
   }
 
-  private eachValue(byteOffset: number, byteLength: number, action: (index: number, view: DataView) => void): void {
+  private eachValue(byteOffset: number, byteLength: number, action: (index: number, view: DataView, byteOffset: number, byteLength: number) => void): void {
     if (byteLength === 0) return;
     const end = byteOffset + byteLength;
     for (let index = Math.floor(byteOffset / this.layout.stride); index < this.count && index * this.layout.stride < end; index++) {
       const start = index * this.layout.stride;
       if (start + this.layout.byteSize > byteOffset) {
-        action(index, new DataView(this.bytes.buffer, start, this.layout.byteSize));
+        const offset = Math.max(byteOffset - start, 0);
+        action(index, new DataView(this.bytes.buffer, start, this.layout.byteSize), offset,
+          Math.min(this.layout.byteSize, end - start) - offset);
       }
     }
   }
