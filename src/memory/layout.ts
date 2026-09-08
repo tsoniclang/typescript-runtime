@@ -4,11 +4,12 @@ import type { PropertyIdentity } from "../location/property-identity.js";
 export type ByteOrder = "little" | "big";
 
 export interface MemoryShape {
-  readonly codec: "int8" | "uint8" | "int16" | "uint16" | "int32" | "uint32" | "int64" | "uint64" | "record";
+  readonly codec: "int8" | "uint8" | "int16" | "uint16" | "int32" | "uint32" | "int64" | "uint64" | "record" | "reference";
   readonly byteOrder: ByteOrder;
   readonly byteSize: number;
   readonly byteAlignment: number;
   readonly stride: number;
+  readonly referenceIdentity?: object;
   readonly fields?: readonly { readonly key: PropertyKey; readonly byteOffset: number; readonly layout: MemoryShape }[];
 }
 
@@ -31,6 +32,7 @@ export interface MemoryLayout<T> extends MemoryShape {
 
 export function sameMemoryLayout(left: MemoryShape, right: MemoryShape): boolean {
   return left.codec === right.codec && left.byteOrder === right.byteOrder &&
+    left.referenceIdentity === right.referenceIdentity &&
     left.byteSize === right.byteSize && left.byteAlignment === right.byteAlignment && left.stride === right.stride &&
     (left.fields?.length ?? 0) === (right.fields?.length ?? 0) &&
     (left.fields ?? []).every((field, index) => {

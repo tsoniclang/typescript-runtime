@@ -2,6 +2,7 @@ import { assignMemoryValue, refreshMemoryValue, sameMemoryLayout, validateMemory
 import type { MemoryLayout, MemoryShape } from "./layout.js";
 import { validateMemoryRange } from "./storage.js";
 import type { MemoryPosition, MemoryStorage } from "./storage.js";
+import { readMemoryBytes, writeMemoryBytes } from "./bytes.js";
 
 interface ArrayAllocation {
   readonly storage: MemoryStorage;
@@ -71,13 +72,13 @@ class ArrayMemory<T> implements MemoryStorage {
   read(byteOffset: number, byteLength: number): Uint8Array {
     this.validate(byteOffset, byteLength);
     this.synchronize(byteOffset, byteLength);
-    return this.bytes.slice(byteOffset, byteOffset + byteLength);
+    return readMemoryBytes(new DataView(this.bytes.buffer), byteOffset, byteLength);
   }
 
   write(byteOffset: number, bytes: Uint8Array): void {
     this.validate(byteOffset, bytes.byteLength);
     this.synchronize(byteOffset, bytes.byteLength);
-    this.bytes.set(bytes, byteOffset);
+    writeMemoryBytes(new DataView(this.bytes.buffer), byteOffset, bytes);
     this.eachValue(byteOffset, bytes.byteLength, (index, view, offset, length) => {
       const previous = this.values[index];
       if (previous === undefined) throw new TypeError("Array memory requires an initialized element.");

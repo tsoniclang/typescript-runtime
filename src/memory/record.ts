@@ -3,6 +3,7 @@ import type { ByteOrder, MemoryAccess, MemoryLayout, MemoryShape } from "./layou
 import type { MemoryPosition } from "./storage.js";
 import { propertyIdentity, retainPropertyIdentity } from "../location/property-identity.js";
 import { memoryPositionIdentity } from "./address.js";
+import { readMemoryBytes } from "./bytes.js";
 
 export interface RecordField<T extends object, Key extends keyof T = keyof T> {
   readonly key: Key;
@@ -64,8 +65,7 @@ export function recordLayout<T extends object>(
   const layout: MemoryLayout<T> = Object.freeze({
     codec: "record", byteOrder, byteSize, byteAlignment, stride, fields,
     read(bytes: DataView): T {
-      const copy = new Uint8Array(byteSize);
-      copy.set(new Uint8Array(bytes.buffer, bytes.byteOffset, byteSize));
+      const copy = readMemoryBytes(bytes, 0, byteSize);
       return view(byteAccess(new DataView(copy.buffer)));
     },
     write(bytes: DataView, value: T): void {

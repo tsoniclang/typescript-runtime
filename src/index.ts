@@ -25,3 +25,4 @@ export {
   int8Layout, uint8Layout, int16Layout, uint16Layout, int32Layout, uint32Layout,
   int64Layout, uint64Layout,
 } from "./memory/scalars.js";
+export { referenceLayout } from "./memory/references.js";

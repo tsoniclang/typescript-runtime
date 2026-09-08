@@ -1,8 +1,12 @@
 import { littleEndian, validateMemoryLayout } from "./layout.js";
 import type { ByteOrder, MemoryLayout } from "./layout.js";
+import { assertNumericMemory } from "./bytes.js";
 
 function scalar<T>(codec: MemoryLayout<T>["codec"], byteOrder: ByteOrder, byteSize: number, byteAlignment: number, stride: number, read: (bytes: DataView) => T, write: (bytes: DataView, value: T) => void): MemoryLayout<T> {
-  const layout = Object.freeze({ codec, byteOrder, byteSize, byteAlignment, stride, read, write });
+  const layout = Object.freeze({ codec, byteOrder, byteSize, byteAlignment, stride,
+    read(bytes: DataView): T { assertNumericMemory(bytes); return read(bytes); },
+    write(bytes: DataView, value: T): void { assertNumericMemory(bytes); write(bytes, value); },
+  });
   validateMemoryLayout(layout);
   return layout;
 }

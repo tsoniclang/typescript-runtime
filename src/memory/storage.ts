@@ -1,6 +1,7 @@
 import type { Location } from "../location.js";
 import type { MemoryLayout, MemoryShape } from "./layout.js";
 import { assignMemoryValue, refreshMemoryValue, sameMemoryLayout } from "./layout.js";
+import { readMemoryBytes, writeMemoryBytes } from "./bytes.js";
 
 export interface MemoryStorage {
   readonly byteLength: number;
@@ -87,13 +88,13 @@ export class LocationMemory<T> implements MemoryStorage {
   read(byteOffset: number, byteLength: number): Uint8Array {
     validateMemoryRange(this, byteOffset, byteLength);
     refreshMemoryValue(this.layout, new DataView(this.bytes.buffer), this.pointer.value, byteOffset, byteLength);
-    return this.bytes.slice(byteOffset, byteOffset + byteLength);
+    return readMemoryBytes(new DataView(this.bytes.buffer), byteOffset, byteLength);
   }
 
   write(byteOffset: number, bytes: Uint8Array): void {
     validateMemoryRange(this, byteOffset, bytes.byteLength);
     refreshMemoryValue(this.layout, new DataView(this.bytes.buffer), this.pointer.value, byteOffset, bytes.byteLength);
-    this.bytes.set(bytes, byteOffset);
+    writeMemoryBytes(new DataView(this.bytes.buffer), byteOffset, bytes);
     const previous = this.pointer.value;
     const next = assignMemoryValue(this.layout, new DataView(this.bytes.buffer), previous, byteOffset, bytes.byteLength);
     if (this.layout.record === undefined) this.pointer.value = next;

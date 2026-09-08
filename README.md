@@ -82,3 +82,13 @@ index; they do not serialize every field of a wide record.
 No reflection, erased typed payload registry, or numeric address emulation is
 involved. Pointer leaves and source-language descriptors require their own
 admitted transport; integer-record codecs do not certify them.
+
+`referenceLayout<T>` owns one statically typed managed-reference domain. Its
+four- or eight-byte words retain opaque relocation tokens, not fabricated
+native addresses. Relocation-aware byte copies preserve the referenced value;
+nil is a zero word. Partial pointer-word copies, numeric observations of a
+non-nil pointer and decoding through another domain reject explicitly. The
+target must share the exact domain where source contracts require it; creating
+two descriptors is not a proof that their erased TypeScript types agree.
+This runtime capability does not certify cross-file target type transport or
+source-language descriptor/lifetime integration.
