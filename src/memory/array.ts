@@ -13,6 +13,7 @@ const allocations = new WeakMap<object, ArrayAllocation>();
 
 export function arrayMemory<T>(values: T[], layout: MemoryLayout<T>): MemoryStorage {
   validateMemoryLayout(layout);
+  if (layout.stride === 0) throw new RangeError("Array byte addressing requires a positive element stride.");
   const previous = allocations.get(values);
   if (previous !== undefined) {
     if (!previous.accepts(layout, values.length)) {

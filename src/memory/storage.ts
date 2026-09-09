@@ -59,7 +59,7 @@ export class LocationMemory<T> implements MemoryStorage {
 
   private readonly pointer: Location<T>;
   private readonly layout: MemoryLayout<T>;
-  private readonly bytes: Uint8Array;
+  private bytes: Uint8Array | undefined;
 
   constructor(pointer: Location<T>, layout: MemoryLayout<T>) {
     this.pointer = pointer;
@@ -68,7 +68,6 @@ export class LocationMemory<T> implements MemoryStorage {
     this.byteAlignment = layout.byteAlignment;
     this.storageIdentity = pointer.storageIdentity;
     this.storageKey = pointer.storageKey;
-    this.bytes = new Uint8Array(this.byteLength);
   }
 
   position(byteOffset: number): MemoryPosition {
@@ -87,16 +86,23 @@ export class LocationMemory<T> implements MemoryStorage {
 
   read(byteOffset: number, byteLength: number): Uint8Array {
     validateMemoryRange(this, byteOffset, byteLength);
-    refreshMemoryValue(this.layout, new DataView(this.bytes.buffer), this.pointer.value, byteOffset, byteLength);
-    return readMemoryBytes(new DataView(this.bytes.buffer), byteOffset, byteLength);
+    const view = this.byteView();
+    refreshMemoryValue(this.layout, view, this.pointer.value, byteOffset, byteLength);
+    return readMemoryBytes(view, byteOffset, byteLength);
   }
 
   write(byteOffset: number, bytes: Uint8Array): void {
     validateMemoryRange(this, byteOffset, bytes.byteLength);
-    refreshMemoryValue(this.layout, new DataView(this.bytes.buffer), this.pointer.value, byteOffset, bytes.byteLength);
-    writeMemoryBytes(new DataView(this.bytes.buffer), byteOffset, bytes);
+    const view = this.byteView();
+    refreshMemoryValue(this.layout, view, this.pointer.value, byteOffset, bytes.byteLength);
+    writeMemoryBytes(view, byteOffset, bytes);
     const previous = this.pointer.value;
-    const next = assignMemoryValue(this.layout, new DataView(this.bytes.buffer), previous, byteOffset, bytes.byteLength);
+    const next = assignMemoryValue(this.layout, view, previous, byteOffset, bytes.byteLength);
     if (this.layout.record === undefined) this.pointer.value = next;
+  }
+
+  private byteView(): DataView {
+    this.bytes ??= new Uint8Array(this.byteLength);
+    return new DataView(this.bytes.buffer);
   }
 }

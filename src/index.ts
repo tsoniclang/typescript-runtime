@@ -27,3 +27,4 @@ export {
   int64Layout, uint64Layout,
 } from "./memory/scalars.js";
 export { referenceLayout } from "./memory/references.js";
+export { identityLayout } from "./memory/identity.js";
