@@ -22,6 +22,7 @@ export { recordField, recordLayout } from "./memory/record.js";
 export type { RecordField } from "./memory/record.js";
 export { keepAlive } from "./memory/lifetime.js";
 export {
+  booleanLayout, float32Layout, float64Layout,
   int8Layout, uint8Layout, int16Layout, uint16Layout, int32Layout, uint32Layout,
   int64Layout, uint64Layout,
 } from "./memory/scalars.js";

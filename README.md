@@ -60,6 +60,13 @@ implicit source-language layout inference. The target must select and prove
 its exact codecs; generic aggregates and physical-address observations are not
 certified merely because a `MemoryLayout<T>` can be declared.
 
+Boolean memory uses one byte with exact zero/one encodings. Float32 and float64
+codecs preserve finite IEEE values, signed zero, subnormals and infinities with
+explicit byte order; float32 writes round to the selected width. Invalid boolean
+bytes and floating NaN reads/writes reject rather than invent a truth value or
+normalize an unrepresentable NaN payload. Ordinary arithmetic remains separate
+from this managed-memory boundary.
+
 The supplied codec determines a scalar view's byte extent. A property location
 alone does not establish its containing allocation. For a target-proved fixed
 array, `arrayElementLocation(values, index, layout)` instead retains the complete

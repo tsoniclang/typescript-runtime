@@ -4,7 +4,7 @@ import type { PropertyIdentity } from "../location/property-identity.js";
 export type ByteOrder = "little" | "big";
 
 export interface MemoryShape {
-  readonly codec: "int8" | "uint8" | "int16" | "uint16" | "int32" | "uint32" | "int64" | "uint64" | "record" | "reference";
+  readonly codec: "boolean" | "float32" | "float64" | "int8" | "uint8" | "int16" | "uint16" | "int32" | "uint32" | "int64" | "uint64" | "record" | "reference";
   readonly byteOrder: ByteOrder;
   readonly byteSize: number;
   readonly byteAlignment: number;
