@@ -18,7 +18,10 @@ Addressed object properties and indexed elements use `propertyLocation`, which
 captures the base and key once while preserving reads and writes through the
 original storage. `sameLocation` compares the underlying storage identity, so
 separately created property locations for the same base and key compare equal.
-`hashLocation` derives a stable process-local hash from that same identity, and
+`hashObjectIdentity` owns stable process-local hashes for managed objects, with
+zero for an absent object. Direct-object pointer lowering calls it without
+constructing a raw address or allocating a wrapper. `hashLocation` derives a
+hash from that same owner and identity, and
 `projectLocation` preserves the identity while adapting reads and writes between
 two statically selected value representations.
 

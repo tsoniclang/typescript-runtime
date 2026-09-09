@@ -8,6 +8,7 @@ export {
   sameLocation,
 } from "./location.js";
 export type { Location } from "./location.js";
+export { hashObjectIdentity } from "./object-identity.js";
 export {
   arrayElementLocation,
   hashRawPointer,

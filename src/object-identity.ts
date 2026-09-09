@@ -1,7 +1,10 @@
 const objectIdentityHashes = new WeakMap<object, number>();
 let nextObjectIdentityHash = 1;
 
-export function hashObjectIdentity(identity: object): number {
+export function hashObjectIdentity(identity: object | undefined): number {
+  if (identity === undefined) {
+    return 0;
+  }
   const existing = objectIdentityHashes.get(identity);
   if (existing !== undefined) {
     return existing;
