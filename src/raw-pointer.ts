@@ -1,10 +1,11 @@
 import { hashLocation } from "./location.js";
 import type { Location } from "./location.js";
-import { memoryAddress, retainMemoryAddress, retainedMemoryAddress } from "./memory/address.js";
+import { memoryAddress, memoryPositionIdentity, retainMemoryAddress, retainedMemoryAddress } from "./memory/address.js";
 import type { MemoryAddress } from "./memory/address.js";
 import { validateMemoryLayout } from "./memory/layout.js";
 import type { MemoryLayout } from "./memory/layout.js";
-import { LocationMemory } from "./memory/storage.js";
+import { locationMemory } from "./memory/storage.js";
+import { readMemoryValue, writeMemoryValue } from "./memory/view.js";
 import { arrayMemory } from "./memory/array.js";
 
 export interface RawPointer {
@@ -30,9 +31,9 @@ export function arrayElementLocation<T>(values: T[], index: number, layout: Memo
   if (!Number.isSafeInteger(index) || index < 0 || index >= values.length) {
     throw new RangeError("Array element address is outside its retained allocation.");
   }
-  const pointer = pointerAt(memoryAddress(arrayMemory(values, layout), index * layout.stride));
-  const result = new MemoryLocation(addressOf(pointer), layout);
-  retainMemoryAddress(result, pointer);
+  const address = memoryAddress(arrayMemory(values, layout), index * layout.stride);
+  const result = new MemoryLocation(address, layout);
+  retainMemoryAddress(result, address);
   return result;
 }
 
@@ -41,10 +42,10 @@ export function toRawPointer<T>(pointer: Location<T> | undefined, layout: Memory
   if (pointer === undefined) return undefined;
   const retained = retainedMemoryAddress(pointer);
   if (retained !== undefined) {
-    validateView(addressOf(retained), layout);
-    return retained;
+    validateView(retained, layout);
+    return pointerAt(retained);
   }
-  return pointerAt(memoryAddress(new LocationMemory(pointer, layout), 0));
+  return pointerAt(memoryAddress(locationMemory(pointer, layout), 0));
 }
 
 export function reinterpretRawPointer<T>(pointer: RawPointer | undefined, layout: MemoryLayout<T>): Location<T> | undefined {
@@ -53,7 +54,7 @@ export function reinterpretRawPointer<T>(pointer: RawPointer | undefined, layout
   const address = addressOf(pointer);
   validateView(address, layout);
   const result = new MemoryLocation(address, layout);
-  retainMemoryAddress(result, pointer);
+  retainMemoryAddress(result, address);
   return result;
 }
 
@@ -109,18 +110,16 @@ class MemoryLocation<T> implements Location<T> {
   constructor(address: MemoryAddress, layout: MemoryLayout<T>) {
     this.address = address;
     this.layout = layout;
-    this.storageIdentity = address.storageIdentity;
-    this.storageKey = address.storageKey;
+    const position = memoryPositionIdentity(address.storage.typedPosition(address.byteOffset, layout));
+    this.storageIdentity = position.identity;
+    this.storageKey = position.key;
   }
 
   get value(): T {
-    const bytes = this.address.storage.read(this.address.byteOffset, this.layout.byteSize);
-    return this.layout.read(new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength));
+    return readMemoryValue(this.address.storage, this.address.byteOffset, this.layout);
   }
 
   set value(value: T) {
-    const bytes = new Uint8Array(this.layout.byteSize);
-    this.layout.write(new DataView(bytes.buffer), value);
-    this.address.storage.write(this.address.byteOffset, bytes);
+    writeMemoryValue(this.address.storage, this.address.byteOffset, this.layout, value);
   }
 }

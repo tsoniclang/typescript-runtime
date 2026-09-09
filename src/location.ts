@@ -1,5 +1,6 @@
 import { hashObjectIdentity } from "./object-identity.js";
-import { inheritMemoryAddress } from "./memory/address.js";
+import { inheritMemoryAddress, retainMemoryAddress } from "./memory/address.js";
+import { propertyIdentity } from "./location/property-identity.js";
 
 export interface Location<T> {
   readonly storageIdentity: object;
@@ -53,14 +54,16 @@ class PropertyLocation<
   TKey extends keyof TObject,
 > implements Location<TObject[TKey]> {
   readonly storageIdentity: object;
-  readonly storageKey: PropertyKey;
+  readonly storageKey: PropertyKey | undefined;
 
   constructor(
     private readonly object: TObject,
     private readonly key: TKey,
   ) {
-    this.storageIdentity = object;
-    this.storageKey = key;
+    const selected = propertyIdentity(object, key);
+    this.storageIdentity = selected.identity;
+    this.storageKey = selected.key;
+    if (selected.address !== undefined) retainMemoryAddress(this, selected.address);
   }
 
   get value(): TObject[TKey] {

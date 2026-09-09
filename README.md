@@ -18,7 +18,10 @@ Addressed object properties and indexed elements use `propertyLocation`, which
 captures the base and key once while preserving reads and writes through the
 original storage. `sameLocation` compares the underlying storage identity, so
 separately created property locations for the same base and key compare equal.
-`hashLocation` derives a stable process-local hash from that same identity, and
+`hashObjectIdentity` owns stable process-local hashes for managed objects, with
+zero for an absent object. Direct-object pointer lowering calls it without
+constructing a raw address or allocating a wrapper. `hashLocation` derives a
+hash from that same owner and identity, and
 `projectLocation` preserves the identity while adapting reads and writes between
 two statically selected value representations.
 
@@ -60,6 +63,13 @@ implicit source-language layout inference. The target must select and prove
 its exact codecs; generic aggregates and physical-address observations are not
 certified merely because a `MemoryLayout<T>` can be declared.
 
+Boolean memory uses one byte with exact zero/one encodings. Float32 and float64
+codecs preserve finite IEEE values, signed zero, subnormals and infinities with
+explicit byte order; float32 writes round to the selected width. Invalid boolean
+bytes and floating NaN reads/writes reject rather than invent a truth value or
+normalize an unrepresentable NaN payload. Ordinary arithmetic remains separate
+from this managed-memory boundary.
+
 The supplied codec determines a scalar view's byte extent. A property location
 alone does not establish its containing allocation. For a target-proved fixed
 array, `arrayElementLocation(values, index, layout)` instead retains the complete
@@ -69,3 +79,26 @@ preserves padding and reads/writes only the touched element window. Resizing or
 changing its selected element layout rejects. The target must prove closure and
 non-reassignment before selecting this representation. Aggregate object storage,
 descriptor transport and native-address observations remain separate contracts.
+
+For target-proven value records, `recordField` captures a typed field codec and
+`recordLayout` combines those fields with a generated accessor-view constructor.
+Whole-record writes update the original fields rather than replacing the
+object; nested writes preserve existing nested-field aliases. Views address the
+same storage, including stable equality and hashes for independently obtained
+field locations. Field addresses obtained through such views retain the
+containing allocation. Padding survives between accesses to the same
+allocation. Narrow byte windows select intersecting fields with an ordered
+index; they do not serialize every field of a wide record.
+No reflection, erased typed payload registry, or numeric address emulation is
+involved. Pointer leaves and source-language descriptors require their own
+admitted transport; integer-record codecs do not certify them.
+
+`referenceLayout<T>` owns one statically typed managed-reference domain. Its
+four- or eight-byte words retain opaque relocation tokens, not fabricated
+native addresses. Relocation-aware byte copies preserve the referenced value;
+nil is a zero word. Partial pointer-word copies, numeric observations of a
+non-nil pointer and decoding through another domain reject explicitly. The
+target must share the exact domain where source contracts require it; creating
+two descriptors is not a proof that their erased TypeScript types agree.
+This runtime capability does not certify cross-file target type transport or
+source-language descriptor/lifetime integration.
