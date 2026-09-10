@@ -1,4 +1,5 @@
 import type { Location } from "../location.js";
+import { hasLocationProjection } from "../location/projection.js";
 import type { MemoryLayout, MemoryShape } from "./layout.js";
 import { assignMemoryValue, refreshMemoryValue, sameMemoryLayout } from "./layout.js";
 import { readMemoryBytes, writeMemoryBytes } from "./bytes.js";
@@ -59,11 +60,17 @@ export class LocationMemory<T> implements MemoryStorage {
 
   private readonly pointer: Location<T>;
   private readonly layout: MemoryLayout<T>;
+  private readonly projectedPosition: ((byteOffset: number, layout?: MemoryShape) => MemoryPosition | undefined) | undefined;
   private bytes: Uint8Array | undefined;
 
   constructor(pointer: Location<T>, layout: MemoryLayout<T>) {
     this.pointer = pointer;
     this.layout = layout;
+    const record = layout.record;
+    if (record !== undefined && hasLocationProjection(pointer)) {
+      const origin = pointer.value;
+      this.projectedPosition = (offset, selected) => record.position(origin, offset, selected);
+    }
     this.byteLength = layout.byteSize;
     this.byteAlignment = layout.byteAlignment;
     this.storageIdentity = pointer.storageIdentity;
@@ -72,6 +79,10 @@ export class LocationMemory<T> implements MemoryStorage {
 
   position(byteOffset: number): MemoryPosition {
     validateMemoryRange(this, byteOffset, 0);
+    if (this.projectedPosition !== undefined) {
+      return this.projectedPosition(byteOffset) ??
+        { identity: this.storageIdentity, key: this.storageKey, displacement: byteOffset };
+    }
     return this.layout.record?.position(this.pointer.value, byteOffset) ??
       { identity: this.storageIdentity, key: this.storageKey, displacement: byteOffset };
   }
@@ -81,6 +92,7 @@ export class LocationMemory<T> implements MemoryStorage {
     if (byteOffset === 0 && sameMemoryLayout(this.layout, layout)) {
       return { identity: this.storageIdentity, key: this.storageKey, displacement: 0 };
     }
+    if (this.projectedPosition !== undefined) return this.projectedPosition(byteOffset, layout) ?? this.position(byteOffset);
     return this.layout.record?.position(this.pointer.value, byteOffset, layout) ?? this.position(byteOffset);
   }
 
@@ -94,11 +106,11 @@ export class LocationMemory<T> implements MemoryStorage {
   write(byteOffset: number, bytes: Uint8Array): void {
     validateMemoryRange(this, byteOffset, bytes.byteLength);
     const view = this.byteView();
-    refreshMemoryValue(this.layout, view, this.pointer.value, byteOffset, bytes.byteLength);
-    writeMemoryBytes(view, byteOffset, bytes);
     const previous = this.pointer.value;
+    refreshMemoryValue(this.layout, view, previous, byteOffset, bytes.byteLength);
+    writeMemoryBytes(view, byteOffset, bytes);
     const next = assignMemoryValue(this.layout, view, previous, byteOffset, bytes.byteLength);
-    if (this.layout.record === undefined) this.pointer.value = next;
+    this.pointer.value = next;
   }
 
   private byteView(): DataView {

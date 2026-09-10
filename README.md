@@ -89,6 +89,13 @@ field locations. Field addresses obtained through such views retain the
 containing allocation. Padding survives between accesses to the same
 allocation. Narrow byte windows select intersecting fields with an ordered
 index; they do not serialize every field of a wide record.
+Every decoded write commits through its owning location, including records.
+Consequently a `projectLocation` that creates a temporary physical record still
+updates its logical source through the inverse conversion. The memory allocation
+retains that projection's initial physical field identities while value reads
+remain live; repeated view construction and logical replacement do not invent
+new addresses. Projections returning existing storage retain its original field
+aliases. Nested property writes likewise commit the changed parent location.
 No reflection, erased typed payload registry, or numeric address emulation is
 involved. Pointer leaves and source-language descriptors require their own
 admitted transport; integer-record codecs do not certify them.
