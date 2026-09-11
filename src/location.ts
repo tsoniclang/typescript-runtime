@@ -1,7 +1,9 @@
 import { hashObjectIdentity } from "./object-identity.js";
 import { inheritMemoryAddress, retainMemoryAddress } from "./memory/address.js";
-import { propertyIdentity } from "./location/property-identity.js";
+import { propertyIdentity, retainedPropertyIdentity } from "./location/property-identity.js";
 import { hasLocationProjection, retainLocationProjection } from "./location/projection.js";
+
+export { viewLocation } from "./location/view.js";
 
 export interface Location<T> {
   readonly storageIdentity: object;
@@ -88,6 +90,11 @@ export function nestedPropertyLocation<
   parent: Location<TObject | null | undefined>,
   key: TKey,
 ): Location<TObject[TKey]> {
+  const object = parent.value;
+  if (object === null || object === undefined) {
+    throw new TypeError("cannot access a property through a nullish location");
+  }
+  if (retainedPropertyIdentity(object, key) !== undefined) return propertyLocation(object, key);
   return new NestedPropertyLocation(parent, key);
 }
 

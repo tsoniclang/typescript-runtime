@@ -109,3 +109,21 @@ target must share the exact domain where source contracts require it; creating
 two descriptors is not a proof that their erased TypeScript types agree.
 This runtime capability does not certify cross-file target type transport or
 source-language descriptor/lifetime integration.
+
+`viewLocation(base, read, write)` retains the base location and lifetime without
+reading it. Loads invoke only `read`, stores only `write`, and nil maps to nil.
+An aligned retained one-past position can anchor a read-free empty view;
+nonzero-sized element I/O still rejects there. This is not `projectLocation`,
+whose conversions read/write the base value.
+
+The target's `bindMemoryRecord` factory captures a closed set of typed pointers,
+constructs explicit accessors, and registers their declared field identities.
+It reads no fields and uses no reflection or dynamic property installation.
+Ordinary forwarding accessors keep their own property identities. Nested
+address formation respects an explicitly registered field alias, including
+after the variable holding the surrounding record changes. Raw provenance is
+retained per canonical identity/key for explicitly bound fields, so their
+independently created aliases observe the same allocation. Ordinary accessors
+do not authorize that association. A conflicting association throws instead of
+overwriting an earlier address. This does not infer physical contiguity for
+independently allocated fields or provide new array/descriptor byte codecs.

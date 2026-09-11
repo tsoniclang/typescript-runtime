@@ -3,6 +3,7 @@ import { hasLocationProjection } from "../location/projection.js";
 import type { MemoryLayout, MemoryShape } from "./layout.js";
 import { assignMemoryValue, refreshMemoryValue, sameMemoryLayout } from "./layout.js";
 import { readMemoryBytes, writeMemoryBytes } from "./bytes.js";
+import { retainMemoryAssociations } from "./address.js";
 
 export interface MemoryStorage {
   readonly byteLength: number;
@@ -66,19 +67,25 @@ export class LocationMemory<T> implements MemoryStorage {
   constructor(pointer: Location<T>, layout: MemoryLayout<T>) {
     this.pointer = pointer;
     this.layout = layout;
-    const record = layout.record;
-    if (record !== undefined && hasLocationProjection(pointer)) {
-      const origin = pointer.value;
-      this.projectedPosition = (offset, selected) => record.position(origin, offset, selected);
-    }
     this.byteLength = layout.byteSize;
     this.byteAlignment = layout.byteAlignment;
     this.storageIdentity = pointer.storageIdentity;
     this.storageKey = pointer.storageKey;
+    const record = layout.record;
+    if (record !== undefined) {
+      const origin = pointer.value;
+      if (hasLocationProjection(pointer)) {
+        this.projectedPosition = (offset, selected) => record.position(origin, offset, selected);
+      }
+      retainMemoryAssociations(record.locations(origin, this, 0));
+    }
   }
 
   position(byteOffset: number): MemoryPosition {
     validateMemoryRange(this, byteOffset, 0);
+    if (byteOffset === this.byteLength) {
+      return { identity: this.storageIdentity, key: this.storageKey, displacement: byteOffset };
+    }
     if (this.projectedPosition !== undefined) {
       return this.projectedPosition(byteOffset) ??
         { identity: this.storageIdentity, key: this.storageKey, displacement: byteOffset };
@@ -89,6 +96,7 @@ export class LocationMemory<T> implements MemoryStorage {
 
   typedPosition(byteOffset: number, layout: MemoryShape): MemoryPosition {
     validateMemoryRange(this, byteOffset, layout.byteSize);
+    if (byteOffset === this.byteLength) return this.position(byteOffset);
     if (byteOffset === 0 && sameMemoryLayout(this.layout, layout)) {
       return { identity: this.storageIdentity, key: this.storageKey, displacement: 0 };
     }

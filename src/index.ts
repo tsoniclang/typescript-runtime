@@ -6,8 +6,10 @@ export {
   projectLocation,
   propertyLocation,
   sameLocation,
+  viewLocation,
 } from "./location.js";
 export type { Location } from "./location.js";
+export type { FixedArray } from "./fixed-array.js";
 export { hashObjectIdentity } from "./object-identity.js";
 export {
   arrayElementLocation,
@@ -29,3 +31,5 @@ export {
 } from "./memory/scalars.js";
 export { referenceLayout } from "./memory/references.js";
 export { identityLayout } from "./memory/identity.js";
+export { bindMemoryRecord, boundFieldIdentity, requireBoundField } from "./memory/bindings.js";
+export type { MemoryFieldBinding } from "./memory/bindings.js";

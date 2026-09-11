@@ -1,4 +1,5 @@
-import type { MemoryPosition } from "./storage.js";
+import type { MemoryPosition, MemoryStorage } from "./storage.js";
+import type { MemoryAssociation } from "./address.js";
 import type { PropertyIdentity } from "../location/property-identity.js";
 
 export type ByteOrder = "little" | "big";
@@ -28,6 +29,7 @@ export interface MemoryLayout<T> extends MemoryShape {
     assign(bytes: DataView, value: T, byteOffset: number, byteLength: number): void;
     view(access: MemoryAccess): T;
     position(value: T, byteOffset: number, selected?: MemoryShape): MemoryPosition | undefined;
+    locations(value: T, storage: MemoryStorage, byteOffset: number): readonly MemoryAssociation[];
   };
 }
 

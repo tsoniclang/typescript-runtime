@@ -83,14 +83,23 @@ test("array raw access work is bounded by the selected byte window", () => {
 test("array allocations reject invalid indexes, changed extent and conflicting layouts", () => {
   const layout = uint32Layout("little", 4, 4);
   const values = [1, 2];
-  for (const index of [-1, 2, 0.5, NaN, Infinity]) {
+  for (const index of [-1, 3, 0.5, NaN, Infinity]) {
     assert.throws(() => arrayElementLocation(values, index, layout), RangeError);
   }
   const raw = toRawPointer(arrayElementLocation(values, 0, layout), layout);
   assert.throws(() => arrayMemory(values, int32Layout("little", 4, 4)), /selected element layout/);
   assert.throws(() => arrayMemory(values, uint32Layout("big", 4, 4)), /selected element layout/);
   assert.throws(() => offsetRawPointer(raw, 9), RangeError);
-  assert.throws(() => reinterpretRawPointer(offsetRawPointer(raw, 8), layout), RangeError);
+  const end = arrayElementLocation(values, values.length, layout);
+  const endRaw = offsetRawPointer(raw, 8);
+  assert.equal(sameRawPointer(toRawPointer(end, layout), endRaw), true);
+  const restoredEnd = reinterpretRawPointer(endRaw, layout);
+  assert.ok(restoredEnd);
+  assert.equal(sameLocation(restoredEnd, end), true);
+  assert.throws(() => end.value, RangeError);
+  assert.throws(() => { end.value = 3; }, RangeError);
+  assert.throws(() => restoredEnd.value, RangeError);
+  assert.throws(() => { restoredEnd.value = 3; }, RangeError);
   values.push(3);
   assert.throws(() => reinterpretRawPointer(raw, layout)?.value, /resize/);
 });

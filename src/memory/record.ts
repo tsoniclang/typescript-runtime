@@ -1,8 +1,9 @@
 import { littleEndian, refreshMemoryValue, sameMemoryLayout, validateMemoryLayout } from "./layout.js";
 import type { ByteOrder, MemoryAccess, MemoryLayout, MemoryShape } from "./layout.js";
-import type { MemoryPosition } from "./storage.js";
+import type { MemoryPosition, MemoryStorage } from "./storage.js";
 import { propertyIdentity, retainPropertyIdentity } from "../location/property-identity.js";
-import { memoryPositionIdentity } from "./address.js";
+import { isBoundLocation, memoryAddress, memoryPositionIdentity } from "./address.js";
+import type { MemoryAssociation } from "./address.js";
 import { readMemoryBytes } from "./bytes.js";
 
 export interface RecordField<T extends object, Key extends keyof T = keyof T> {
@@ -12,6 +13,7 @@ export interface RecordField<T extends object, Key extends keyof T = keyof T> {
   write(bytes: DataView, value: T, byteOffset: number, byteLength: number): void;
   assign(bytes: DataView, value: T, byteOffset: number, byteLength: number): void;
   position(value: T, byteOffset: number, selected?: MemoryShape): MemoryPosition | undefined;
+  locations(value: T, storage: MemoryStorage, byteOffset: number): readonly MemoryAssociation[];
 }
 
 export function recordField<T extends object, Key extends keyof T>(key: Key, byteOffset: number, layout: MemoryLayout<T[Key]>): RecordField<T, Key> {
@@ -21,13 +23,24 @@ export function recordField<T extends object, Key extends keyof T>(key: Key, byt
   }
   return Object.freeze({
     key, byteOffset, layout,
+    locations(value: T, storage: MemoryStorage, base: number): readonly MemoryAssociation[] {
+      const identity = propertyIdentity(value, key);
+      const offset = base + byteOffset;
+      const location = { storageIdentity: identity.identity, storageKey: identity.key };
+      return [...(isBoundLocation(location) ? [{ location, address: memoryAddress(storage, offset) }] : []),
+        ...(layout.record?.locations(value[key], storage, offset) ?? [])];
+    },
     write(bytes: DataView, value: T, offset: number, length: number): void {
       refreshMemoryValue(layout, fieldBytes(bytes, byteOffset, layout.byteSize), value[key], offset, length);
     },
     assign(bytes: DataView, value: T, offset: number, length: number): void {
       const selected = fieldBytes(bytes, byteOffset, layout.byteSize);
       if (layout.record === undefined) value[key] = layout.read(selected);
-      else layout.record.assign(selected, value[key], offset, length);
+      else {
+        const child = value[key];
+        layout.record.assign(selected, child, offset, length);
+        value[key] = child;
+      }
     },
     position(value: T, offset: number, selected?: MemoryShape): MemoryPosition | undefined {
       const displacement = offset - byteOffset;
@@ -72,6 +85,9 @@ export function recordLayout<T extends object>(
       eachField(fields, 0, byteSize, (field, offset, length) => field.write(bytes, value, offset, length));
     },
     record: Object.freeze({
+      locations(value: T, storage: MemoryStorage, byteOffset: number): readonly MemoryAssociation[] {
+        return fields.flatMap(field => field.locations(value, storage, byteOffset));
+      },
       view(access: MemoryAccess): T {
         const result = view(access);
         retainPropertyIdentity(result, key => {
