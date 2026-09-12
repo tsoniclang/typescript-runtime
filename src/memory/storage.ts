@@ -1,7 +1,7 @@
 import type { Location } from "../location.js";
 import { hasLocationProjection } from "../location/projection.js";
 import type { MemoryLayout, MemoryShape } from "./layout.js";
-import { assignMemoryValue, refreshMemoryValue, sameMemoryLayout } from "./layout.js";
+import { assignMemoryValue, refreshMemoryValue, requireMemoryByteCodec, sameMemoryLayout } from "./layout.js";
 import { readMemoryBytes, writeMemoryBytes } from "./bytes.js";
 import { retainMemoryAssociations } from "./address.js";
 
@@ -106,6 +106,7 @@ export class LocationMemory<T> implements MemoryStorage {
 
   read(byteOffset: number, byteLength: number): Uint8Array {
     validateMemoryRange(this, byteOffset, byteLength);
+    requireMemoryByteCodec(this.layout);
     const view = this.byteView();
     refreshMemoryValue(this.layout, view, this.pointer.value, byteOffset, byteLength);
     return readMemoryBytes(view, byteOffset, byteLength);
@@ -113,6 +114,7 @@ export class LocationMemory<T> implements MemoryStorage {
 
   write(byteOffset: number, bytes: Uint8Array): void {
     validateMemoryRange(this, byteOffset, bytes.byteLength);
+    requireMemoryByteCodec(this.layout);
     const view = this.byteView();
     const previous = this.pointer.value;
     refreshMemoryValue(this.layout, view, previous, byteOffset, bytes.byteLength);

@@ -31,5 +31,6 @@ export {
 } from "./memory/scalars.js";
 export { referenceLayout } from "./memory/references.js";
 export { identityLayout } from "./memory/identity.js";
+export { arrayAddressLayout } from "./memory/array-address.js";
 export { bindMemoryRecord, boundFieldIdentity, requireBoundField } from "./memory/bindings.js";
 export type { MemoryFieldBinding } from "./memory/bindings.js";

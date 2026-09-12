@@ -63,6 +63,18 @@ implicit source-language layout inference. The target must select and prove
 its exact codecs; generic aggregates and physical-address observations are not
 certified merely because a `MemoryLayout<T>` can be declared.
 
+`arrayAddressLayout(order, size, alignment, stride, elementLayout, count)`
+retains an exact inline-array address shape without implementing array byte
+storage. For example, a two-word layout retains count `2` and the word's
+independent stride; a zero-sized array may retain an exact bigint count.
+`toRawPointer` and `reinterpretRawPointer` preserve nil and location identity
+without reading or enumerating array elements. Equivalent descriptors retain
+the original address; different counts or child shapes remain distinct layout contracts.
+Byte reads/writes reject before array-sized scratch allocation or source
+mutation. Ordinary access to the original array is unchanged. This does not
+infer a containing allocation from a pointer to one element, enlarge retained
+storage or support array byte reinterpretation.
+
 Boolean memory uses one byte with exact zero/one encodings. Float32 and float64
 codecs preserve finite IEEE values, signed zero, subnormals and infinities with
 explicit byte order; float32 writes round to the selected width. Invalid boolean
