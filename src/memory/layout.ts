@@ -1,16 +1,18 @@
-import type { MemoryPosition } from "./storage.js";
+import type { MemoryPosition, MemoryStorage } from "./storage.js";
+import type { MemoryAssociation } from "./address.js";
 import type { PropertyIdentity } from "../location/property-identity.js";
 
 export type ByteOrder = "little" | "big";
 
 export interface MemoryShape {
-  readonly codec: "boolean" | "float32" | "float64" | "int8" | "uint8" | "int16" | "uint16" | "int32" | "uint32" | "int64" | "uint64" | "record" | "reference" | "identity";
+  readonly codec: "boolean" | "float32" | "float64" | "int8" | "uint8" | "int16" | "uint16" | "int32" | "uint32" | "int64" | "uint64" | "record" | "reference" | "identity" | "array-address";
   readonly identityDomain?: "number" | "bigint" | "zero";
   readonly byteOrder: ByteOrder;
   readonly byteSize: number;
   readonly byteAlignment: number;
   readonly stride: number;
   readonly referenceIdentity?: object;
+  readonly array?: { readonly element: MemoryShape; readonly length: number | bigint };
   readonly fields?: readonly { readonly key: PropertyKey; readonly byteOffset: number; readonly layout: MemoryShape }[];
 }
 
@@ -28,6 +30,7 @@ export interface MemoryLayout<T> extends MemoryShape {
     assign(bytes: DataView, value: T, byteOffset: number, byteLength: number): void;
     view(access: MemoryAccess): T;
     position(value: T, byteOffset: number, selected?: MemoryShape): MemoryPosition | undefined;
+    locations(value: T, storage: MemoryStorage, byteOffset: number): readonly MemoryAssociation[];
   };
 }
 
@@ -36,6 +39,8 @@ export function sameMemoryLayout(left: MemoryShape, right: MemoryShape): boolean
     left.identityDomain === right.identityDomain &&
     left.referenceIdentity === right.referenceIdentity &&
     left.byteSize === right.byteSize && left.byteAlignment === right.byteAlignment && left.stride === right.stride &&
+    (left.array === undefined ? right.array === undefined : right.array !== undefined &&
+      left.array.length === right.array.length && sameMemoryLayout(left.array.element, right.array.element)) &&
     (left.fields?.length ?? 0) === (right.fields?.length ?? 0) &&
     (left.fields ?? []).every((field, index) => {
       const other = right.fields?.[index];
@@ -46,13 +51,19 @@ export function sameMemoryLayout(left: MemoryShape, right: MemoryShape): boolean
 
 export function validateMemoryLayout<T>(layout: MemoryLayout<T>): void {
   const emptyIdentity = layout.codec === "identity" && layout.identityDomain === "zero";
-  if (!Number.isSafeInteger(layout.byteSize) || (emptyIdentity ? layout.byteSize !== 0 : layout.byteSize <= 0) ||
+  const arrayAddress = layout.codec === "array-address" && layout.array !== undefined;
+  if (!Number.isSafeInteger(layout.byteSize) || (emptyIdentity ? layout.byteSize !== 0 : arrayAddress ? layout.byteSize < 0 : layout.byteSize <= 0) ||
       !Number.isSafeInteger(layout.byteAlignment) || layout.byteAlignment <= 0 ||
       (BigInt(layout.byteAlignment) & (BigInt(layout.byteAlignment) - 1n)) !== 0n ||
       !Number.isSafeInteger(layout.stride) || layout.stride < layout.byteSize ||
       layout.stride % layout.byteAlignment !== 0) {
     throw new RangeError("Memory layout requires a supported size, power-of-two alignment and aligned stride.");
   }
+}
+
+export function requireMemoryByteCodec(layout: MemoryShape): void {
+  if (layout.codec === "array-address") throw new TypeError("Managed array-address layout has no byte codec.");
+  if (layout.codec === "identity") throw new TypeError("Managed identity-only layout has no byte codec.");
 }
 
 export function refreshMemoryValue<T>(layout: MemoryLayout<T>, bytes: DataView, current: T, byteOffset: number, byteLength: number): void {

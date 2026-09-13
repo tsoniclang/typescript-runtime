@@ -63,6 +63,18 @@ implicit source-language layout inference. The target must select and prove
 its exact codecs; generic aggregates and physical-address observations are not
 certified merely because a `MemoryLayout<T>` can be declared.
 
+`arrayAddressLayout(order, size, alignment, stride, elementLayout, count)`
+retains an exact inline-array address shape without implementing array byte
+storage. For example, a two-word layout retains count `2` and the word's
+independent stride; a zero-sized array may retain an exact bigint count.
+`toRawPointer` and `reinterpretRawPointer` preserve nil and location identity
+without reading or enumerating array elements. Equivalent descriptors retain
+the original address; different counts or child shapes remain distinct layout contracts.
+Byte reads/writes reject before array-sized scratch allocation or source
+mutation. Ordinary access to the original array is unchanged. This does not
+infer a containing allocation from a pointer to one element, enlarge retained
+storage or support array byte reinterpretation.
+
 Boolean memory uses one byte with exact zero/one encodings. Float32 and float64
 codecs preserve finite IEEE values, signed zero, subnormals and infinities with
 explicit byte order; float32 writes round to the selected width. Invalid boolean
@@ -89,6 +101,13 @@ field locations. Field addresses obtained through such views retain the
 containing allocation. Padding survives between accesses to the same
 allocation. Narrow byte windows select intersecting fields with an ordered
 index; they do not serialize every field of a wide record.
+Every decoded write commits through its owning location, including records.
+Consequently a `projectLocation` that creates a temporary physical record still
+updates its logical source through the inverse conversion. The memory allocation
+retains that projection's initial physical field identities while value reads
+remain live; repeated view construction and logical replacement do not invent
+new addresses. Projections returning existing storage retain its original field
+aliases. Nested property writes likewise commit the changed parent location.
 No reflection, erased typed payload registry, or numeric address emulation is
 involved. Pointer leaves and source-language descriptors require their own
 admitted transport; integer-record codecs do not certify them.
@@ -102,3 +121,21 @@ target must share the exact domain where source contracts require it; creating
 two descriptors is not a proof that their erased TypeScript types agree.
 This runtime capability does not certify cross-file target type transport or
 source-language descriptor/lifetime integration.
+
+`viewLocation(base, read, write)` retains the base location and lifetime without
+reading it. Loads invoke only `read`, stores only `write`, and nil maps to nil.
+An aligned retained one-past position can anchor a read-free empty view;
+nonzero-sized element I/O still rejects there. This is not `projectLocation`,
+whose conversions read/write the base value.
+
+The target's `bindMemoryRecord` factory captures a closed set of typed pointers,
+constructs explicit accessors, and registers their declared field identities.
+It reads no fields and uses no reflection or dynamic property installation.
+Ordinary forwarding accessors keep their own property identities. Nested
+address formation respects an explicitly registered field alias, including
+after the variable holding the surrounding record changes. Raw provenance is
+retained per canonical identity/key for explicitly bound fields, so their
+independently created aliases observe the same allocation. Ordinary accessors
+do not authorize that association. A conflicting association throws instead of
+overwriting an earlier address. This does not infer physical contiguity for
+independently allocated fields or provide new array/descriptor byte codecs.

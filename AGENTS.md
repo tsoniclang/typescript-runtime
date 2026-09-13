@@ -1,7 +1,8 @@
 # Agent Notes (TypeScript Runtime)
 
-The canonical workspace policy in `../AGENTS.md` applies. This file contains
-only TypeScript-runtime ownership and verification rules.
+Read and follow `../tsonic/docs/architecture/workspace-agent-policy.md` before
+any work. This file contains only TypeScript-runtime ownership and verification
+rules.
 
 ## Ownership
 
@@ -27,3 +28,12 @@ Every runtime capability starts with a failing focused test and closes with:
 
 Keep maintained source files focused and below 600 physical lines. Keep
 generated artifacts reproducible from checked-in inputs.
+
+## Pull Request Workflow
+
+Never use the GitHub CLI (`gh`), install it, or request its authentication.
+Do not create pull requests through APIs or other automation. When a PR is
+requested, provide the GitHub creation URL for the pushed feature branch:
+`https://github.com/<owner>/<repo>/compare/<base>...<branch>?quick_pull=1`.
+The user creates and merges the PR. Clearly distinguish a creation link from
+an existing PR; a pushed branch does not mean a PR has been opened.

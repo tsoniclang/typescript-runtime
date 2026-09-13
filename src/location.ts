@@ -1,6 +1,9 @@
 import { hashObjectIdentity } from "./object-identity.js";
 import { inheritMemoryAddress, retainMemoryAddress } from "./memory/address.js";
-import { propertyIdentity } from "./location/property-identity.js";
+import { propertyIdentity, retainedPropertyIdentity } from "./location/property-identity.js";
+import { hasLocationProjection, retainLocationProjection } from "./location/projection.js";
+
+export { viewLocation } from "./location/view.js";
 
 export interface Location<T> {
   readonly storageIdentity: object;
@@ -87,6 +90,11 @@ export function nestedPropertyLocation<
   parent: Location<TObject | null | undefined>,
   key: TKey,
 ): Location<TObject[TKey]> {
+  const object = parent.value;
+  if (object === null || object === undefined) {
+    throw new TypeError("cannot access a property through a nullish location");
+  }
+  if (retainedPropertyIdentity(object, key) !== undefined) return propertyLocation(object, key);
   return new NestedPropertyLocation(parent, key);
 }
 
@@ -103,6 +111,7 @@ class NestedPropertyLocation<
   ) {
     this.storageIdentity = locationIdentity(parent);
     this.storageKey = key;
+    if (hasLocationProjection(parent)) retainLocationProjection(this);
   }
 
   get value(): TObject[TKey] {
@@ -110,7 +119,9 @@ class NestedPropertyLocation<
   }
 
   set value(value: TObject[TKey]) {
-    this.object()[this.key] = value;
+    const parent = this.object();
+    parent[this.key] = value;
+    this.parent.value = parent;
   }
 
   private object(): TObject {
@@ -180,6 +191,7 @@ export function projectLocation<TSource, TTarget>(
     return undefined;
   }
   const projected = new ProjectedLocation(pointer, fromSource, toSource);
+  retainLocationProjection(projected);
   inheritMemoryAddress(pointer, projected);
   return projected;
 }

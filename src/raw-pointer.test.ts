@@ -91,7 +91,10 @@ test("nil, exact offsets, alignment and retained allocation bounds fail closed",
     assert.throws(() => offsetRawPointer(raw, offset), RangeError);
   }
   assert.throws(() => reinterpretRawPointer(offsetRawPointer(raw, 1), uint16Layout("little", 2, 2)), RangeError);
-  assert.throws(() => reinterpretRawPointer(offsetRawPointer(raw, 4), uint8Layout("little", 1, 1)), RangeError);
+  const end = reinterpretRawPointer(offsetRawPointer(raw, 4), uint8Layout("little", 1, 1));
+  assert.ok(end);
+  assert.throws(() => end.value, RangeError);
+  assert.throws(() => { end.value = 1; }, RangeError);
   assert.throws(() => reinterpretRawPointer(raw, int64Layout("little", 8, 8)), RangeError);
 });
 

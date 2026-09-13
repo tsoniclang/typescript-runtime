@@ -52,6 +52,7 @@ class ArrayMemory<T> implements MemoryStorage {
   position(byteOffset: number): MemoryPosition {
     this.validate(byteOffset, 0);
     const index = Math.floor(byteOffset / this.layout.stride);
+    if (byteOffset === this.byteLength) return { identity: this.values, key: index, displacement: 0 };
     const value = this.values[index];
     const displacement = byteOffset % this.layout.stride;
     return value === undefined ? { identity: this.values, key: index, displacement } :
@@ -60,6 +61,7 @@ class ArrayMemory<T> implements MemoryStorage {
 
   typedPosition(byteOffset: number, layout: MemoryShape): MemoryPosition {
     this.validate(byteOffset, layout.byteSize);
+    if (byteOffset === this.byteLength) return this.position(byteOffset);
     const index = Math.floor(byteOffset / this.layout.stride);
     const displacement = byteOffset % this.layout.stride;
     if (displacement === 0 && sameMemoryLayout(this.layout, layout)) {

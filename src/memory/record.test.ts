@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { hashLocation, location, propertyLocation, sameLocation } from "../location.js";
+import { boundLocation, hashLocation, location, nestedPropertyLocation, projectLocation, propertyLocation, sameLocation } from "../location.js";
 import { hashRawPointer, offsetRawPointer, reinterpretRawPointer, sameRawPointer, toRawPointer } from "../raw-pointer.js";
 import { recordField, recordLayout } from "./record.js";
 import { uint8Layout, uint32Layout } from "./scalars.js";
 import type { ByteOrder, MemoryLayout } from "./layout.js";
 
 interface Pair { First: number; Second: number }
+interface LogicalPair { readonly left: number; readonly right: number }
 
 function pairLayout(order: ByteOrder): MemoryLayout<Pair> {
   const word = uint32Layout(order, 4, 4);
@@ -20,6 +21,73 @@ function pairLayout(order: ByteOrder): MemoryLayout<Pair> {
     set Second(value: number) { access.write(8, word, value); },
   }));
 }
+
+test("record byte writes commit temporary projections through the owning location", () => {
+  let value: LogicalPair = Object.freeze({ left: 1, right: 2 });
+  let writes = 0;
+  const root = boundLocation({}, () => value, next => { value = next; writes++; });
+  const pointer = projectLocation(root,
+    selected => ({ First: selected.left, Second: selected.right }),
+    selected => Object.freeze({ left: selected.First, right: selected.Second }));
+  const layout = pairLayout("little");
+  const word = uint32Layout("little", 4, 4);
+  const raw = toRawPointer(pointer, layout);
+  const second = reinterpretRawPointer(offsetRawPointer(raw, 8), word);
+  assert.ok(second);
+  second.value = 9;
+  assert.deepEqual(value, { left: 1, right: 9 });
+  assert.equal(writes, 1);
+  const whole = reinterpretRawPointer(raw, layout);
+  assert.ok(whole);
+  whole.value = { First: 13, Second: 17 };
+  assert.deepEqual(value, { left: 13, right: 17 });
+  assert.equal(writes, 2);
+  root.value = Object.freeze({ left: 19, right: 23 });
+  assert.equal(second.value, 23);
+  const member = nestedPropertyLocation(pointer, "Second");
+  member.value = 29;
+  assert.deepEqual(value, { left: 19, right: 29 });
+});
+
+test("projected record sublocations have stable identities independent of temporary values", () => {
+  const root = location<LogicalPair>(Object.freeze({ left: 1, right: 2 }));
+  const pointer = projectLocation(root,
+    selected => ({ First: selected.left, Second: selected.right }),
+    selected => Object.freeze({ left: selected.First, right: selected.Second }));
+  const layout = pairLayout("little");
+  const first = offsetRawPointer(toRawPointer(pointer, layout), 8);
+  const second = offsetRawPointer(toRawPointer(pointer, layout), 8);
+  assert.equal(sameRawPointer(first, second), true);
+  assert.equal(hashRawPointer(first), hashRawPointer(second));
+  const typedFirst = reinterpretRawPointer(first, uint32Layout("little", 4, 4));
+  const typedSecond = reinterpretRawPointer(second, uint32Layout("little", 4, 4));
+  assert.ok(typedFirst);
+  assert.ok(typedSecond);
+  assert.equal(sameLocation(typedFirst, typedSecond), true);
+  assert.equal(hashLocation(typedFirst), hashLocation(typedSecond));
+  root.value = Object.freeze({ left: 31, right: 37 });
+  const afterReplacement = offsetRawPointer(toRawPointer(pointer, layout), 8);
+  assert.equal(sameRawPointer(first, afterReplacement), true);
+  assert.equal(sameRawPointer(toRawPointer(pointer, layout), toRawPointer(pointer, layout)), true);
+});
+
+test("storage-preserving record projections retain previously taken field addresses", () => {
+  const original = { First: 1, Second: 2 };
+  const root = location({ storage: original });
+  const first = propertyLocation(original, "First");
+  const second = propertyLocation(original, "Second");
+  const pointer = projectLocation(root, value => value.storage, storage => ({ storage }));
+  const raw = toRawPointer(pointer, pairLayout("little"));
+  const word = uint32Layout("little", 4, 4);
+  assert.equal(sameRawPointer(raw, toRawPointer(first, word)), true);
+  assert.equal(sameRawPointer(offsetRawPointer(raw, 8), toRawPointer(second, word)), true);
+  const view = reinterpretRawPointer(raw, pairLayout("little"));
+  assert.ok(view);
+  view.value = { First: 41, Second: 43 };
+  assert.equal(root.value.storage, original);
+  assert.equal(first.value, 41);
+  assert.equal(second.value, 43);
+});
 
 for (const order of ["little", "big"] as const) {
   test(`record byte writes preserve existing field aliases: ${order}`, () => {

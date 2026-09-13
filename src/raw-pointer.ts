@@ -2,8 +2,8 @@ import { hashLocation } from "./location.js";
 import type { Location } from "./location.js";
 import { memoryAddress, memoryPositionIdentity, retainMemoryAddress, retainedMemoryAddress } from "./memory/address.js";
 import type { MemoryAddress } from "./memory/address.js";
-import { validateMemoryLayout } from "./memory/layout.js";
-import type { MemoryLayout } from "./memory/layout.js";
+import { sameMemoryLayout, validateMemoryLayout } from "./memory/layout.js";
+import type { MemoryLayout, MemoryShape } from "./memory/layout.js";
 import { locationMemory } from "./memory/storage.js";
 import { readMemoryValue, writeMemoryValue } from "./memory/view.js";
 import { arrayMemory } from "./memory/array.js";
@@ -14,6 +14,7 @@ export interface RawPointer {
 
 const rawPointerBrand: unique symbol = Symbol("TsonicRawPointer");
 const addresses = new WeakMap<RawPointer, MemoryAddress>();
+const selectedLayouts = new WeakMap<object, MemoryShape>();
 
 function pointerAt(address: MemoryAddress): RawPointer {
   const pointer = Object.freeze<RawPointer>({ [rawPointerBrand]: true });
@@ -28,7 +29,7 @@ function addressOf(pointer: RawPointer): MemoryAddress {
 }
 
 export function arrayElementLocation<T>(values: T[], index: number, layout: MemoryLayout<T>): Location<T> {
-  if (!Number.isSafeInteger(index) || index < 0 || index >= values.length) {
+  if (!Number.isSafeInteger(index) || index < 0 || index > values.length) {
     throw new RangeError("Array element address is outside its retained allocation.");
   }
   const address = memoryAddress(arrayMemory(values, layout), index * layout.stride);
@@ -40,12 +41,20 @@ export function arrayElementLocation<T>(values: T[], index: number, layout: Memo
 export function toRawPointer<T>(pointer: Location<T> | undefined, layout: MemoryLayout<T>): RawPointer | undefined {
   validateMemoryLayout(layout);
   if (pointer === undefined) return undefined;
+  const previous = selectedLayouts.get(pointer);
+  if (previous !== undefined && !sameMemoryLayout(previous, layout)) {
+    throw new TypeError("Location memory cannot change its selected layout.");
+  }
   const retained = retainedMemoryAddress(pointer);
   if (retained !== undefined) {
     validateView(retained, layout);
+    selectedLayouts.set(pointer, layout);
     return pointerAt(retained);
   }
-  return pointerAt(memoryAddress(locationMemory(pointer, layout), 0));
+  const address = memoryAddress(locationMemory(pointer, layout), 0);
+  retainMemoryAddress(pointer, address);
+  selectedLayouts.set(pointer, layout);
+  return pointerAt(address);
 }
 
 export function reinterpretRawPointer<T>(pointer: RawPointer | undefined, layout: MemoryLayout<T>): Location<T> | undefined {
@@ -94,7 +103,7 @@ export function hashRawPointer(pointer: RawPointer | undefined): number {
 }
 
 function validateView<T>(address: MemoryAddress, layout: MemoryLayout<T>): void {
-  if (address.byteOffset + layout.byteSize > address.storage.byteLength ||
+  if ((address.byteOffset !== address.storage.byteLength && address.byteOffset + layout.byteSize > address.storage.byteLength) ||
       address.storage.byteAlignment % layout.byteAlignment !== 0 ||
       address.byteOffset % layout.byteAlignment !== 0) {
     throw new RangeError("Raw typed view exceeds its storage or violates its selected alignment.");
@@ -110,7 +119,9 @@ class MemoryLocation<T> implements Location<T> {
   constructor(address: MemoryAddress, layout: MemoryLayout<T>) {
     this.address = address;
     this.layout = layout;
-    const position = memoryPositionIdentity(address.storage.typedPosition(address.byteOffset, layout));
+    const position = memoryPositionIdentity(address.byteOffset === address.storage.byteLength && layout.byteSize !== 0
+      ? address.storage.position(address.byteOffset)
+      : address.storage.typedPosition(address.byteOffset, layout));
     this.storageIdentity = position.identity;
     this.storageKey = position.key;
   }

@@ -14,5 +14,9 @@ export function retainPropertyIdentity(view: object, resolve: (key: PropertyKey)
 }
 
 export function propertyIdentity(value: object, key: PropertyKey): PropertyIdentity {
-  return views.get(value)?.(key) ?? { identity: value, key };
+  return retainedPropertyIdentity(value, key) ?? { identity: value, key };
+}
+
+export function retainedPropertyIdentity(value: object, key: PropertyKey): PropertyIdentity | undefined {
+  return views.get(value)?.(key);
 }
